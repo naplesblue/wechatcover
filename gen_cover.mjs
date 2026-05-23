@@ -133,8 +133,14 @@ if (!fs.existsSync(brandSystemPath)) {
   console.error('提示: 参照 brand_system.template.md 创建你自己的 brand_system.md');
   process.exit(1);
 }
-const brandSystem = fs.readFileSync(brandSystemPath, 'utf-8');
+let brandSystem = fs.readFileSync(brandSystemPath, 'utf-8');
 const artDirector = fs.readFileSync(path.join(ROOT, 'art_director.md'), 'utf-8');
+
+// IP 角色规范是 brand_system 里的可插拔模块（按「## IP 角色规范」小标题切到下一个 ## 或文末）。
+// 拼装逻辑：带 IP 才保留这段；不带 IP 时整段移除——上下文里压根没有 IP 描述，自然不会被画进去。全部风格通用。
+if (!withCharacter) {
+  brandSystem = brandSystem.replace(/\n## IP 角色规范[\s\S]*?(?=\n## |\s*$)/, '\n').trim();
+}
 
 // ── 调 LLM 做艺术指导 ──
 const ART_DIRECTOR_MODEL = modelOverride || process.env.GEN_COVER_MODEL || 'deepseek-v4-flash';
@@ -160,6 +166,7 @@ const subtitleJsonLine = finalSubtitle
   ? `  "subtitle_text": "${finalSubtitle}",`
   : `  "subtitle_text": "",`;
 
+// 带 IP 才追加 CHARACTER 指令；不带 IP 时 brand_system 的 IP 段已被移除，无需任何说明
 const characterExtra = withCharacter
   ? `\n8. **必须**在 image_prompt 的 SUBJECT 段后追加 CHARACTER 段（参考 art_director.md「角色启用条款」与 brand_system.md「IP 角色规范」），让 IP 角色与画面互动`
   : '';
