@@ -1,0 +1,200 @@
+/**
+ * wechat-theme.css — 公众号正文主题（暖纸蓝）
+ *
+ * 移植自 doocs/md default 主题，配色改为本项目品牌（深海蓝 #1B4965 + 砖橘 #E07A5F）。
+ * 所有值固定（微信不支持 var()），经 juice 内联后可直接粘进公众号编辑器。
+ */
+
+section {
+  font-family: -apple-system-font, BlinkMacSystemFont, Helvetica Neue, PingFang SC, Hiragino Sans GB, Microsoft YaHei UI, Microsoft YaHei, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.75;
+  text-align: left;
+  color: #2b2a26;
+  padding: 0 8px;
+}
+
+p {
+  margin: 1.5em 8px;
+  letter-spacing: 0.05em;
+  font-size: inherit;
+  color: #333;
+  word-break: break-all;
+}
+
+h1 {
+  font-size: 1.4em;
+  text-align: center;
+  font-weight: bold;
+  margin: 1em auto 0.5em;
+  color: #1B4965;
+}
+
+h2 {
+  font-size: 1.2em;
+  font-weight: bold;
+  margin: 2em 8px 0.75em;
+  padding-left: 8px;
+  border-left: 4px solid #E07A5F;
+  color: #1B4965;
+}
+
+h3 {
+  font-size: 1.1em;
+  font-weight: bold;
+  margin: 1.5em 8px 0.5em;
+  color: #1B4965;
+}
+
+h4, h5, h6 {
+  font-size: 1em;
+  font-weight: bold;
+  margin: 1.2em 8px 0.5em;
+  color: #333;
+}
+
+blockquote {
+  border-left: 4px solid #1B4965;
+  padding: 1px 0 1px 12px;
+  margin: 1.5em 8px;
+  background: #FAF3DD;
+  color: #5a5750;
+  font-size: 0.95em;
+}
+
+blockquote p {
+  margin: 0.5em 0;
+  color: #5a5750;
+}
+
+ol {
+  margin: 1em 8px;
+  padding-left: 28px;
+  list-style-type: decimal;
+  color: #333;
+}
+
+ol li {
+  margin: 0.5em 0;
+  padding-left: 4px;
+  color: #333;
+}
+
+ul {
+  margin: 1em 8px;
+  padding-left: 28px;
+  list-style-type: disc;
+  color: #333;
+}
+
+ul li {
+  margin: 0.5em 0;
+  padding-left: 4px;
+  color: #333;
+}
+
+p.footnotes {
+  margin: 0.5em 8px;
+  font-size: 80%;
+  color: #333;
+}
+
+figure {
+  margin: 1.5em 8px;
+  color: #333;
+}
+
+figcaption, .md-figcaption {
+  text-align: center;
+  color: #888;
+  font-size: 0.8em;
+}
+
+hr {
+  border-style: solid;
+  border-width: 1px 0 0;
+  border-color: #e0d9c8;
+  height: 0;
+  margin: 1.5em 0;
+}
+
+code {
+  font-size: 90%;
+  color: #1B4965;
+  background: #f3efe3;
+  padding: 3px 5px;
+  border-radius: 4px;
+  font-family: Menlo, Monaco, 'Courier New', monospace;
+}
+
+pre {
+  margin: 1em 8px;
+  border-radius: 8px;
+  background: #f6f4ec;
+  overflow-x: auto;
+}
+
+pre code {
+  display: block;
+  padding: 0.8em 1em;
+  overflow-x: auto;
+  color: #2b2a26;
+  background: none;
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+em {
+  font-style: italic;
+  font-size: inherit;
+}
+
+a {
+  color: #1B4965;
+  text-decoration: none;
+  word-break: break-all;
+}
+
+strong {
+  color: #1B4965;
+  font-weight: bold;
+  font-size: inherit;
+}
+
+table {
+  border-collapse: collapse;
+  margin: 1.5em 8px;
+  width: 100%;
+  color: #333;
+}
+
+thead {
+  font-weight: bold;
+  color: #333;
+}
+
+th {
+  border: 1px solid #dfdfdf;
+  padding: 0.4em 0.8em;
+  color: #333;
+  word-break: keep-all;
+  background: #FAF3DD;
+  font-size: 0.95em;
+}
+
+td {
+  border: 1px solid #dfdfdf;
+  padding: 0.4em 0.8em;
+  color: #333;
+  word-break: keep-all;
+  font-size: 0.95em;
+}
+
+img {
+  max-width: 100%;
+  border-radius: 6px;
+  margin: 0.5em auto;
+  display: block;
+}

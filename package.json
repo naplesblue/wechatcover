@@ -1,0 +1,21 @@
+{
+  "name": "wechatcover-skill",
+  "version": "0.1.0",
+  "description": "通用中文公众号封面图生成 skill：设计哲学 → LLM 艺术指导 → GPT-Image-2 出图",
+  "type": "module",
+  "bin": {
+    "gen-cover": "./gen_cover.mjs"
+  },
+  "scripts": {
+    "cover": "node gen_cover.mjs",
+    "serve": "node server.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "juice": "^11.1.1",
+    "markdown-it": "^14.1.1"
+  }
+}

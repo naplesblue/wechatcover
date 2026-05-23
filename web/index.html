@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>wechatcover · 封面生成</title>
+<style>
+  :root { --paper:#FAF3DD; --ink:#1B4965; --accent:#E07A5F; --text:#2b2a26; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--paper); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Noto Serif SC",serif; line-height:1.6; }
+  .wrap { max-width:860px; margin:0 auto; padding:32px 20px 60px; }
+  h1 { color:var(--ink); font-size:24px; margin:0 0 14px; }
+  .sub { color:#7a7468; font-size:14px; margin:0 0 8px; }
+  .card { border:1px solid #e8e0cc; border-radius:12px; background:#fffdf6; padding:18px;
+    box-shadow:0 1px 3px rgba(43,42,38,.04); display:flex; flex-direction:column; }
+  textarea { width:100%; min-height:200px; padding:12px 14px; border:1px solid #ddd3bd; border-radius:8px;
+    background:#fff; font-size:14px; line-height:1.7; resize:vertical; font-family:inherit; color:var(--text); }
+  .controls { display:flex; flex-wrap:wrap; gap:14px; align-items:end; }
+  .field { display:flex; flex-direction:column; gap:4px; font-size:13px; color:#7a7468; }
+  select, input[type=text] { padding:7px 10px; border:1px solid #ddd3bd; border-radius:6px; background:#fff;
+    font-size:14px; font-family:inherit; color:var(--text); }
+  input[type=text] { min-width:200px; }
+  button { background:var(--ink); color:#fff; border:none; border-radius:8px; padding:10px 22px; font-size:15px;
+    cursor:pointer; font-family:inherit; }
+  button:hover { background:#163b54; }
+  button.ghost { background:transparent; color:var(--ink); border:1px solid var(--ink); }
+  button.ghost:hover { background:#1b496510; }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  .actions { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin:14px 0 0; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:6px; }
+  .status { font-size:14px; color:#7a7468; min-height:0; margin:0; }
+  .status:not(:empty) { margin:14px 2px 0; }
+  .covers { display:flex; flex-direction:column; gap:22px; }
+  .covers:not(:empty) { margin-top:14px; }
+  .cover img { width:100%; border:1px solid #e0d9c8; border-radius:8px; display:block; }
+  .cover .hook, .prompt-card .hook { font-size:14px; color:var(--ink); margin:8px 0 2px; font-weight:700; }
+  .cover .vc, .prompt-card .vc { font-size:13px; color:#7a7468; margin:0 0 8px; }
+  .covers-empty { border:1.5px dashed #ddd3bd; border-radius:12px; padding:52px 20px; text-align:center;
+    color:#a99f8c; font-size:14px; }
+  a.dl { font-size:13px; color:var(--ink); }
+  .prompts { display:flex; flex-direction:column; gap:18px; }
+  .prompts:not(:empty) { margin-top:14px; }
+  .prompt-card { border:1px solid #e0d9c8; border-radius:10px; background:#fffdf6; padding:14px 16px; }
+  .prompt-card textarea { min-height:150px; margin-top:8px; font-family:Menlo,Consolas,monospace; font-size:12px; line-height:1.6; }
+  /* 设置 */
+  details.settings { order:-1; margin:0 0 14px; border:1px solid #e8e0cc; border-radius:8px; background:#fcf8ee; }
+  details.settings summary { cursor:pointer; padding:9px 12px; font-size:14px; color:var(--ink); user-select:none; }
+  details.settings .body { padding:6px 14px 14px; }
+  .cfg-label { font-size:13px; font-weight:600; color:var(--ink); margin:10px 0 6px; }
+  .cfg-row { display:flex; flex-wrap:wrap; gap:12px; align-items:end; }
+  input[type=password] { padding:7px 10px; border:1px solid #ddd3bd; border-radius:6px; background:#fff;
+    font-size:13px; font-family:inherit; color:var(--text); min-width:240px; }
+  .hint { font-size:12px; color:#9a9286; margin:10px 0 0; }
+  /* 全屏排版工作台 */
+  .modal { display:none; position:fixed; inset:0; z-index:50; background:var(--paper); flex-direction:column; }
+  .modal.open { display:flex; }
+  .modal-head { display:flex; align-items:center; gap:12px; padding:10px 16px; border-bottom:1px solid #e0d9c8; background:#fffdf6; }
+  .modal-title { font-size:15px; font-weight:700; color:var(--ink); }
+  .modal-body { flex:1; display:flex; min-height:0; }
+  .pane-src { flex:1; min-width:0; border:none; border-right:1px solid #e0d9c8; padding:18px 22px;
+    font-size:14px; line-height:1.75; font-family:Menlo,Consolas,monospace; resize:none; background:#fffdf6; color:var(--text); outline:none; }
+  .pane-preview { flex:1; min-width:0; padding:24px 30px; overflow:auto; background:#fff; }
+  @media (max-width:680px){ .modal-body{ flex-direction:column; } .pane-src{ border-right:none; border-bottom:1px solid #e0d9c8; } }
+  /* key 缺失弹窗 */
+  .popup-mask { display:none; position:fixed; inset:0; z-index:60; background:rgba(43,42,38,.4);
+    align-items:center; justify-content:center; padding:20px; }
+  .popup-mask.open { display:flex; }
+  .popup { background:#fffdf6; border-radius:16px; padding:30px 32px; max-width:360px; text-align:center;
+    box-shadow:0 16px 48px rgba(0,0,0,.2); }
+  .popup .badge { width:48px; height:48px; line-height:48px; margin:0 auto 14px; border-radius:50%;
+    background:var(--accent); color:#fff; font-size:26px; font-weight:700; }
+  .popup h3 { margin:0 0 8px; color:var(--ink); font-size:18px; }
+  .popup p { margin:0 0 20px; color:#7a7468; font-size:14px; line-height:1.6; }
+  .popup .acts { display:flex; gap:10px; justify-content:center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>封面生成</h1>
+
+  <div class="card">
+    <div class="controls">
+      <div class="field">风格
+        <select id="preset">
+          <option value="default">暖纸蓝（默认）</option>
+          <option value="cold-industrial">冷工业灰</option>
+          <option value="warm-orange">暖橘活泼</option>
+          <option value="dark-editorial">深色编辑风</option>
+          <option value="academic">学术纯排版</option>
+        </select>
+      </div>
+      <div class="field">候选数
+        <select id="variants">
+          <option value="1">1 张</option>
+          <option value="2">2 张</option>
+          <option value="3">3 张</option>
+        </select>
+      </div>
+      <div class="field">角落小字（选填）
+        <input type="text" id="subtitle" placeholder="yourdomain.com · 2026.05.22">
+      </div>
+    </div>
+
+    <details class="settings" open>
+      <summary>设置：模型 / API Key（填了用页面的，留空用 .env）</summary>
+      <div class="body">
+        <div class="cfg-label">艺术指导（读文章 → 想钩子/画面 → 写提示词）</div>
+        <div class="cfg-row">
+          <div class="field">Provider
+            <select id="artProvider">
+              <option value="deepseek">DeepSeek</option>
+              <option value="qwen">通义千问 Qwen</option>
+            </select>
+          </div>
+          <div class="field">模型
+            <select id="artModel"></select>
+          </div>
+          <div class="field">API Key
+            <input type="password" id="artKey" autocomplete="off" placeholder="sk-…">
+          </div>
+        </div>
+
+        <div class="cfg-label">生图</div>
+        <div class="cfg-row">
+          <div class="field">出图后端
+            <select id="provider">
+              <option value="openai">GPT-Image-2（默认）</option>
+              <option value="qwen">通义千问 Qwen-Image（国内）</option>
+            </select>
+          </div>
+          <div class="field">图像模型（选填）
+            <input type="text" id="imageModel" placeholder="按后端默认（qwen: qwen-image-2.0-pro-…）">
+          </div>
+          <div class="field">API Key
+            <input type="password" id="imgKey" autocomplete="off" placeholder="sk-…">
+          </div>
+        </div>
+        <p class="hint">Key 只存在你本机浏览器、并发到本机运行的服务用于出图，不上传别处、不写日志。</p>
+      </div>
+    </details>
+
+    <div class="actions">
+      <button id="gen">生成封面</button>
+      <button class="ghost" id="promptBtn">只出提示词</button>
+      <button class="ghost" id="wechatBtn">导出微信排版 HTML</button>
+    </div>
+
+    <div class="status" id="status"></div>
+    <div class="covers" id="covers"></div>
+    <div class="prompts" id="prompts"></div>
+
+    <p class="sub" style="margin-top:18px">粘贴文章（Markdown，第一行 <code># 标题</code>）。出图前这里是焦点；出图后下移，重点看封面。</p>
+    <textarea id="md" placeholder="# 我的文章标题&#10;&#10;正文粘贴到这里……"></textarea>
+  </div>
+</div>
+
+<!-- 全屏排版工作台：左编辑 markdown，右实时预览，复制富文本粘进公众号 -->
+<div class="modal" id="wechatModal">
+  <div class="modal-head">
+    <span class="modal-title">微信排版工作台</span>
+    <span class="status" id="copyStatus" style="margin:0"></span>
+    <span style="flex:1"></span>
+    <button id="copyHtml">复制（富文本）</button>
+    <button class="ghost" id="wechatClose">关闭</button>
+  </div>
+  <div class="modal-body">
+    <textarea id="wechatSrc" class="pane-src" placeholder="# 标题&#10;&#10;在这里编辑 markdown，右侧实时预览…"></textarea>
+    <div id="wechatPreview" class="pane-preview"></div>
+  </div>
+</div>
+
+<!-- API Key 缺失提醒 -->
+<div class="popup-mask" id="keyPopup">
+  <div class="popup">
+    <div class="badge">!</div>
+    <h3>还差一步：填入 API Key</h3>
+    <p id="keyPopupMsg">生成封面需要「艺术指导」和「生图」两个 key。</p>
+    <div class="acts">
+      <button id="keyGoSettings">去填写</button>
+      <button class="ghost" id="keyPopupClose">稍后</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const statusEl = $('status');
+
+const ART_MODELS = { deepseek: ['deepseek-v4-flash', 'deepseek-chat'], qwen: ['qwen3-max', 'qwen-plus'] };
+const KEY_LABEL = { OPENAI_API_KEY: 'OpenAI', DEEPSEEK_API_KEY: 'DeepSeek', DASHSCOPE_API_KEY: 'DashScope' };
+
+// 中央 key 存储（按 key 名）；艺术指导/生图 的 key 输入框都映射到这里
+let keysStore = { OPENAI_API_KEY: '', DEEPSEEK_API_KEY: '', DASHSCOPE_API_KEY: '' };
+const SK = 'wechatcover.settings';
+
+function artKeyName() { return $('artProvider').value === 'deepseek' ? 'DEEPSEEK_API_KEY' : 'DASHSCOPE_API_KEY'; }
+function imgKeyName() { return $('provider').value === 'qwen' ? 'DASHSCOPE_API_KEY' : 'OPENAI_API_KEY'; }
+
+function populateArtModels(selected) {
+  const opts = ART_MODELS[$('artProvider').value] || [];
+  $('artModel').innerHTML = opts.map((m) => `<option value="${m}">${m}</option>`).join('');
+  if (selected && opts.includes(selected)) $('artModel').value = selected;
+}
+function syncKeyInputs() {
+  const an = artKeyName(), inm = imgKeyName();
+  $('artKey').value = keysStore[an] || '';
+  $('artKey').placeholder = KEY_LABEL[an] + ' Key（sk-…）';
+  $('imgKey').value = keysStore[inm] || '';
+  $('imgKey').placeholder = KEY_LABEL[inm] + ' Key（sk-…）';
+}
+
+function loadSettings() {
+  let s = {};
+  try { s = JSON.parse(localStorage.getItem(SK) || '{}'); } catch {}
+  if (s.keys) keysStore = { ...keysStore, ...s.keys };
+  if (s.artProvider) $('artProvider').value = s.artProvider;
+  if (s.provider) $('provider').value = s.provider;
+  if (s.imageModel != null) $('imageModel').value = s.imageModel;
+  populateArtModels(s.artModel);
+  syncKeyInputs();
+}
+function saveSettings() {
+  localStorage.setItem(SK, JSON.stringify({
+    keys: keysStore,
+    artProvider: $('artProvider').value,
+    artModel: $('artModel').value,
+    provider: $('provider').value,
+    imageModel: $('imageModel').value,
+  }));
+}
+
+async function postJson(path, body) {
+  const r = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.error || ('HTTP ' + r.status));
+  return data;
+}
+
+// ── key 就绪检查 ──
+let envKeys = { OPENAI_API_KEY: false, DEEPSEEK_API_KEY: false, DASHSCOPE_API_KEY: false };
+async function loadKeyStatus() { try { envKeys = await (await fetch('/keys-status')).json(); } catch {} }
+function keyReady(name) { return (keysStore[name] && keysStore[name].trim() !== '') || !!envKeys[name]; }
+function missingKeys(previewOnly) {
+  const an = artKeyName(), inm = imgKeyName();
+  const miss = [];
+  if (!keyReady(an)) miss.push({ role: '艺术指导', key: an });
+  if (!previewOnly && !keyReady(inm)) miss.push({ role: '生图', key: inm });
+  return miss.filter((m, i) => miss.findIndex((x) => x.key === m.key) === i);
+}
+function keyInputFor(name) {
+  if (artKeyName() === name) return $('artKey');
+  if (imgKeyName() === name) return $('imgKey');
+  return $('artKey');
+}
+function showKeyPopup(miss) {
+  $('keyPopupMsg').innerHTML = '还需要：' + miss.map((m) => `<b>${m.role}</b>（${KEY_LABEL[m.key]} Key）`).join('、');
+  $('keyPopup').classList.add('open');
+}
+
+function renderCovers(covers) {
+  $('covers').innerHTML = '';
+  covers.forEach((c, i) => {
+    const div = document.createElement('div');
+    div.className = 'cover';
+    const bust = c.url + '&t=' + Date.now();
+    div.innerHTML =
+      (c.hook ? `<div class="hook">钩子：${c.hook}</div>` : '') +
+      (c.visual_concept ? `<div class="vc">${c.visual_concept}</div>` : '') +
+      `<img src="${bust}" alt="cover ${i + 1}">` +
+      `<div class="row"><a class="dl" href="${c.url}" download="${c.file}">下载这张</a></div>`;
+    $('covers').appendChild(div);
+  });
+}
+function copyPlain(text, el) {
+  navigator.clipboard.writeText(text)
+    .then(() => { el.textContent = '已复制'; setTimeout(() => { el.textContent = ''; }, 1600); })
+    .catch(() => { el.textContent = '复制失败，请手动选中复制'; });
+}
+function renderPrompts(prompts) {
+  const wrap = $('prompts');
+  wrap.innerHTML = '';
+  prompts.forEach((p) => {
+    const div = document.createElement('div');
+    div.className = 'prompt-card';
+    if (p.hook) { const h = document.createElement('div'); h.className = 'hook'; h.textContent = '钩子：' + p.hook; div.appendChild(h); }
+    if (p.title_text) { const t = document.createElement('div'); t.className = 'vc'; t.textContent = '标题：' + p.title_text; div.appendChild(t); }
+    const ta = document.createElement('textarea'); ta.readOnly = true; ta.value = p.image_prompt; div.appendChild(ta);
+    const row = document.createElement('div'); row.className = 'row';
+    const btn = document.createElement('button'); btn.className = 'ghost'; btn.textContent = '复制提示词';
+    const st = document.createElement('span'); st.className = 'status'; st.style.margin = '0';
+    btn.addEventListener('click', () => copyPlain(ta.value, st));
+    row.appendChild(btn); row.appendChild(st); div.appendChild(row);
+    wrap.appendChild(div);
+  });
+}
+
+async function generate(previewOnly) {
+  const markdown = $('md').value;
+  if (!markdown.trim()) { statusEl.textContent = '请先粘贴文章内容'; return; }
+  const miss = missingKeys(previewOnly);
+  if (miss.length) { showKeyPopup(miss); return; }
+  const btn = previewOnly ? $('promptBtn') : $('gen');
+  btn.disabled = true;
+  saveSettings();
+  statusEl.textContent = previewOnly
+    ? '生成提示词中…（只跑艺术指导，约 10–20 秒）'
+    : '艺术指导 + 出图中…（约 30–60 秒/张，含中文渲染质检）';
+  $('prompts').innerHTML = '';
+  $('covers').innerHTML = previewOnly ? '' : '<div class="covers-empty">正在生成…</div>';
+  try {
+    const data = await postJson('/generate', {
+      markdown,
+      preset: $('preset').value,
+      subtitle: $('subtitle').value,
+      variants: parseInt($('variants').value, 10),
+      provider: $('provider').value,
+      model: $('artModel').value,
+      imageModel: $('imageModel').value,
+      keys: { ...keysStore },
+      previewOnly: !!previewOnly,
+    });
+    if (previewOnly) {
+      statusEl.textContent = `生成 ${data.prompts.length} 条提示词——复制到网页版 LLM 出图`;
+      renderPrompts(data.prompts);
+    } else {
+      statusEl.textContent = `生成 ${data.covers.length} 张`;
+      renderCovers(data.covers);
+    }
+  } catch (e) {
+    statusEl.textContent = '出错：' + e.message;
+    if (!previewOnly) $('covers').innerHTML = '';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ── 排版工作台（全屏 modal，源文实时编辑 → 预览实时渲染）──
+let lastHtml = '';
+let renderTimer = null;
+function openWechat() {
+  $('wechatSrc').value = $('md').value;
+  $('wechatModal').classList.add('open');
+  renderWechatNow();
+  $('wechatSrc').focus();
+}
+function closeWechat() { $('wechatModal').classList.remove('open'); }
+async function renderWechatNow() {
+  const markdown = $('wechatSrc').value;
+  if (!markdown.trim()) { $('wechatPreview').innerHTML = ''; lastHtml = ''; return; }
+  try {
+    const { html } = await postJson('/wechat', { markdown });
+    lastHtml = html;
+    $('wechatPreview').innerHTML = html;
+  } catch (e) {
+    $('wechatPreview').innerHTML = '<p style="color:#b23a2e">渲染出错：' + e.message + '</p>';
+  }
+}
+function scheduleRender() { clearTimeout(renderTimer); renderTimer = setTimeout(renderWechatNow, 350); }
+
+// ── 事件绑定 ──
+$('gen').addEventListener('click', () => generate(false));
+$('promptBtn').addEventListener('click', () => generate(true));
+$('wechatBtn').addEventListener('click', openWechat);
+$('wechatClose').addEventListener('click', closeWechat);
+$('wechatSrc').addEventListener('input', scheduleRender);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeWechat(); $('keyPopup').classList.remove('open'); } });
+
+$('copyHtml').addEventListener('click', async () => {
+  if (!lastHtml) { $('copyStatus').textContent = '还没有可复制的内容'; return; }
+  try {
+    await navigator.clipboard.write([new ClipboardItem({
+      'text/html': new Blob([lastHtml], { type: 'text/html' }),
+      'text/plain': new Blob([lastHtml], { type: 'text/plain' }),
+    })]);
+    $('copyStatus').textContent = '已复制（带格式），直接粘进公众号编辑器';
+  } catch {
+    const r = document.createRange();
+    r.selectNodeContents($('wechatPreview'));
+    const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+    try { document.execCommand('copy'); $('copyStatus').textContent = '已复制'; }
+    catch { $('copyStatus').textContent = '复制失败，请手动选中预览区复制'; }
+    sel.removeAllRanges();
+  }
+});
+
+// key 弹窗
+$('keyPopupClose').addEventListener('click', () => $('keyPopup').classList.remove('open'));
+$('keyGoSettings').addEventListener('click', () => {
+  $('keyPopup').classList.remove('open');
+  document.querySelector('details.settings').open = true;
+  const miss = missingKeys(false);
+  if (miss[0]) { const el = keyInputFor(miss[0].key); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); }
+});
+
+// 设置联动
+$('artProvider').addEventListener('change', () => { populateArtModels(); syncKeyInputs(); saveSettings(); });
+$('provider').addEventListener('change', () => { syncKeyInputs(); saveSettings(); });
+$('artModel').addEventListener('change', saveSettings);
+$('imageModel').addEventListener('change', saveSettings);
+$('artKey').addEventListener('input', () => {
+  keysStore[artKeyName()] = $('artKey').value;
+  if (imgKeyName() === artKeyName()) $('imgKey').value = $('artKey').value;
+  saveSettings();
+});
+$('imgKey').addEventListener('input', () => {
+  keysStore[imgKeyName()] = $('imgKey').value;
+  if (artKeyName() === imgKeyName()) $('artKey').value = $('imgKey').value;
+  saveSettings();
+});
+
+// 启动
+loadSettings();
+loadKeyStatus();
+</script>
+</body>
+</html>

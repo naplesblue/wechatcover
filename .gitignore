@@ -1,0 +1,19 @@
+# secrets — 绝不入库
+.env
+.env.*
+!.env.example
+
+# dependencies
+node_modules/
+
+# 生成的封面输出（示例图在 examples/ 才入库）
+covers/
+
+# 内部规划，不发布
+ROADMAP.md
+
+# 本地工具配置
+.claude/settings.local.json
+
+# OS
+.DS_Store
