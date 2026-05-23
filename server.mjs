@@ -73,6 +73,38 @@ function runGenCover({ mdFile, preset, withCharacter, subtitle, variants, outBas
   });
 }
 
+// 跑 render.mjs（同提示词重出，不重跑艺术指导）→ 返回新图片绝对路径
+function runRender({ promptFile, outBase, provider, env }) {
+  return new Promise((resolve, reject) => {
+    const a = ['render.mjs', '--prompt-file', promptFile, '--out', outBase, '--size', '1920x816', '--quality', 'low'];
+    if (provider) a.push('--provider', provider);
+    const ps = spawn('node', a, { cwd: ROOT, env: { ...process.env, ...(env || {}) } });
+    let out = '', err = '';
+    ps.stdout.on('data', (d) => { out += d; });
+    ps.stderr.on('data', (d) => { err += d; process.stderr.write(d); });
+    ps.on('close', (code) => {
+      if (code !== 0) return reject(new Error(err.trim().split('\n').slice(-3).join(' ') || `render 退出码 ${code}`));
+      const p = out.trim().split('\n').filter(Boolean).pop();
+      if (!p) return reject(new Error('render 未返回图片路径'));
+      resolve(p);
+    });
+    ps.on('error', reject);
+  });
+}
+
+// 从请求体取页面填的 key/模型 → spawn env（非空才注入，覆盖 .env）
+function envFromBody(body, provider) {
+  const env = {};
+  for (const k of ['OPENAI_API_KEY', 'DEEPSEEK_API_KEY', 'DASHSCOPE_API_KEY']) {
+    const v = body.keys?.[k];
+    if (typeof v === 'string' && v.trim()) env[k] = v.trim();
+  }
+  if (typeof body.imageModel === 'string' && body.imageModel.trim()) {
+    env[provider === 'qwen' ? 'QWEN_IMAGE_MODEL' : 'OPENAI_IMAGE_MODEL'] = body.imageModel.trim();
+  }
+  return env;
+}
+
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://localhost:${PORT}`);
@@ -105,15 +137,7 @@ const server = http.createServer(async (req, res) => {
       if (!markdown || !markdown.trim()) return sendJson(res, 400, { error: '请粘贴文章内容' });
       const provider = ['openai', 'qwen'].includes(body.provider) ? body.provider : 'openai';
       const artModel = (typeof body.model === 'string' && body.model.trim()) ? body.model.trim() : null;
-      // 页面填的 key / 模型 → env 注入（非空才注入；空则回落 .env）
-      const env = {};
-      for (const k of ['OPENAI_API_KEY', 'DEEPSEEK_API_KEY', 'DASHSCOPE_API_KEY']) {
-        const v = body.keys?.[k];
-        if (typeof v === 'string' && v.trim()) env[k] = v.trim();
-      }
-      if (typeof body.imageModel === 'string' && body.imageModel.trim()) {
-        env[provider === 'qwen' ? 'QWEN_IMAGE_MODEL' : 'OPENAI_IMAGE_MODEL'] = body.imageModel.trim();
-      }
+      const env = envFromBody(body, provider);  // 页面填的 key/模型 → env（非空才注入，覆盖 .env）
       const previewOnly = !!body.previewOnly;
       const ts = Date.now();
       const mdFile = path.join(WEB_DIR, `${ts}.md`);
@@ -139,6 +163,22 @@ const server = http.createServer(async (req, res) => {
         return { url: `/cover?f=${encodeURIComponent(base)}`, file: base, hook: meta.hook || '', visual_concept: meta.visual_concept || '', title_text: meta.title_text || '', image_prompt: meta.image_prompt || '' };
       });
       return sendJson(res, 200, { covers });
+    }
+
+    // 同提示词重出：直接用给定 image_prompt 出图，不重跑艺术指导
+    if (req.method === 'POST' && url.pathname === '/render') {
+      const body = JSON.parse(await readBody(req));
+      const prompt = typeof body.image_prompt === 'string' ? body.image_prompt.trim() : '';
+      if (prompt.length < 50) return sendJson(res, 400, { error: '提示词为空或过短' });
+      const provider = ['openai', 'qwen'].includes(body.provider) ? body.provider : 'openai';
+      const env = envFromBody(body, provider);
+      const ts = Date.now();
+      const promptFile = path.join(WEB_DIR, `${ts}.prompt.txt`);
+      fs.writeFileSync(promptFile, prompt, 'utf-8');
+      const outBase = path.join(WEB_DIR, `${ts}.png`);
+      const p = await runRender({ promptFile, outBase, provider, env });
+      const base = path.basename(p);
+      return sendJson(res, 200, { url: `/cover?f=${encodeURIComponent(base)}`, file: base });
     }
 
     if (req.method === 'POST' && url.pathname === '/wechat') {

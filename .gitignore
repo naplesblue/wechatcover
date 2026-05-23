@@ -15,5 +15,9 @@ ROADMAP.md
 # 本地工具配置
 .claude/settings.local.json
 
+# 备份文件
+*.bak
+*.bak.html
+
 # OS
 .DS_Store

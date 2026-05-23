@@ -3,192 +3,1404 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>wechatcover · 封面生成</title>
+<title>wechatcover · 智能公众号封面舱</title>
 <style>
-  :root { --paper:#FAF3DD; --ink:#1B4965; --accent:#E07A5F; --text:#2b2a26; }
+  /* 基础设计变量与主题 */
+  :root {
+    --font-sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
+    --font-serif: "Songti SC", "Noto Serif SC", "STSong", "SimSun", Georgia, serif;
+    --font-mono: "SF Mono", Menlo, Consolas, "Courier New", monospace;
+    --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    
+    --radius-lg: 16px;
+    --radius-md: 12px;
+    --radius-sm: 8px;
+    
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.12);
+  }
+
+  /* Light Theme - Classic Paper */
+  .light-theme {
+    --bg-primary: #F8F6F0; /* 极温和暖纸色 */
+    --bg-card: #FFFFFF;
+    --bg-input: #FCFAF6;
+    --border-color: #E8E3D7;
+    --border-focus: #1B4965;
+    
+    --text-primary: #2C2B29;
+    --text-secondary: #706B60;
+    --text-muted: #A09A8E;
+    
+    --ink: #1B4965;
+    --accent: #E07A5F;
+    --accent-glow: rgba(224, 122, 95, 0.15);
+    
+    --glass-bg: rgba(255, 255, 255, 0.85);
+    --glass-border: rgba(232, 227, 215, 0.8);
+  }
+
+  /* Dark Theme - Obsidian Dark */
+  .dark-theme {
+    --bg-primary: #0A0D16; /* 深邃夜空黑蓝 */
+    --bg-card: #121824;
+    --bg-input: #192132;
+    --border-color: #242E42;
+    --border-focus: #38BDF8;
+    
+    --text-primary: #F1F5F9;
+    --text-secondary: #94A3B8;
+    --text-muted: #64748B;
+    
+    --ink: #38BDF8; /* 极客酷蓝 */
+    --accent: #FF7A59; /* 精准明亮珊瑚橙 */
+    --accent-glow: rgba(255, 122, 89, 0.15);
+    
+    --glass-bg: rgba(18, 24, 36, 0.8);
+    --glass-border: rgba(36, 46, 66, 0.8);
+  }
+
+  /* 重置 & 全局样式 */
   * { box-sizing: border-box; }
-  body { margin:0; background:var(--paper); color:var(--text);
-    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Noto Serif SC",serif; line-height:1.6; }
-  .wrap { max-width:860px; margin:0 auto; padding:32px 20px 60px; }
-  h1 { color:var(--ink); font-size:24px; margin:0 0 14px; }
-  .sub { color:#7a7468; font-size:14px; margin:0 0 8px; }
-  .card { border:1px solid #e8e0cc; border-radius:12px; background:#fffdf6; padding:18px;
-    box-shadow:0 1px 3px rgba(43,42,38,.04); display:flex; flex-direction:column; }
-  textarea { width:100%; min-height:200px; padding:12px 14px; border:1px solid #ddd3bd; border-radius:8px;
-    background:#fff; font-size:14px; line-height:1.7; resize:vertical; font-family:inherit; color:var(--text); }
-  .controls { display:flex; flex-wrap:wrap; gap:14px; align-items:end; }
-  .field { display:flex; flex-direction:column; gap:4px; font-size:13px; color:#7a7468; }
-  select, input[type=text] { padding:7px 10px; border:1px solid #ddd3bd; border-radius:6px; background:#fff;
-    font-size:14px; font-family:inherit; color:var(--text); }
-  input[type=text] { min-width:200px; }
-  button { background:var(--ink); color:#fff; border:none; border-radius:8px; padding:10px 22px; font-size:15px;
-    cursor:pointer; font-family:inherit; }
-  button:hover { background:#163b54; }
-  button.ghost { background:transparent; color:var(--ink); border:1px solid var(--ink); }
-  button.ghost:hover { background:#1b496510; }
-  button:disabled { opacity:.5; cursor:not-allowed; }
-  .actions { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin:14px 0 0; }
-  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:6px; }
-  .status { font-size:14px; color:#7a7468; min-height:0; margin:0; }
-  .status:not(:empty) { margin:14px 2px 0; }
-  .covers { display:flex; flex-direction:column; gap:22px; }
-  .covers:not(:empty) { margin-top:14px; }
-  .cover img { width:100%; border:1px solid #e0d9c8; border-radius:8px; display:block; }
-  .cover .hook, .prompt-card .hook { font-size:14px; color:var(--ink); margin:8px 0 2px; font-weight:700; }
-  .cover .vc, .prompt-card .vc { font-size:13px; color:#7a7468; margin:0 0 8px; }
-  .covers-empty { border:1.5px dashed #ddd3bd; border-radius:12px; padding:52px 20px; text-align:center;
-    color:#a99f8c; font-size:14px; }
-  a.dl { font-size:13px; color:var(--ink); }
-  .prompts { display:flex; flex-direction:column; gap:18px; }
-  .prompts:not(:empty) { margin-top:14px; }
-  .prompt-card { border:1px solid #e0d9c8; border-radius:10px; background:#fffdf6; padding:14px 16px; }
-  .prompt-card textarea { min-height:150px; margin-top:8px; font-family:Menlo,Consolas,monospace; font-size:12px; line-height:1.6; }
-  /* 设置 */
-  details.settings { order:-1; margin:0 0 14px; border:1px solid #e8e0cc; border-radius:8px; background:#fcf8ee; }
-  details.settings summary { cursor:pointer; padding:9px 12px; font-size:14px; color:var(--ink); user-select:none; }
-  details.settings .body { padding:6px 14px 14px; }
-  .cfg-label { font-size:13px; font-weight:600; color:var(--ink); margin:10px 0 6px; }
-  .cfg-row { display:flex; flex-wrap:wrap; gap:12px; align-items:end; }
-  input[type=password] { padding:7px 10px; border:1px solid #ddd3bd; border-radius:6px; background:#fff;
-    font-size:13px; font-family:inherit; color:var(--text); min-width:240px; }
-  .hint { font-size:12px; color:#9a9286; margin:10px 0 0; }
-  /* 全屏排版工作台 */
-  .modal { display:none; position:fixed; inset:0; z-index:50; background:var(--paper); flex-direction:column; }
-  .modal.open { display:flex; }
-  .modal-head { display:flex; align-items:center; gap:12px; padding:10px 16px; border-bottom:1px solid #e0d9c8; background:#fffdf6; }
-  .modal-title { font-size:15px; font-weight:700; color:var(--ink); }
-  .modal-body { flex:1; display:flex; min-height:0; }
-  .pane-src { flex:1; min-width:0; border:none; border-right:1px solid #e0d9c8; padding:18px 22px;
-    font-size:14px; line-height:1.75; font-family:Menlo,Consolas,monospace; resize:none; background:#fffdf6; color:var(--text); outline:none; }
-  .pane-preview { flex:1; min-width:0; padding:24px 30px; overflow:auto; background:#fff; }
-  @media (max-width:680px){ .modal-body{ flex-direction:column; } .pane-src{ border-right:none; border-bottom:1px solid #e0d9c8; } }
-  /* key 缺失弹窗 */
-  .popup-mask { display:none; position:fixed; inset:0; z-index:60; background:rgba(43,42,38,.4);
-    align-items:center; justify-content:center; padding:20px; }
-  .popup-mask.open { display:flex; }
-  .popup { background:#fffdf6; border-radius:16px; padding:30px 32px; max-width:360px; text-align:center;
-    box-shadow:0 16px 48px rgba(0,0,0,.2); }
-  .popup .badge { width:48px; height:48px; line-height:48px; margin:0 auto 14px; border-radius:50%;
-    background:var(--accent); color:#fff; font-size:26px; font-weight:700; }
-  .popup h3 { margin:0 0 8px; color:var(--ink); font-size:18px; }
-  .popup p { margin:0 0 20px; color:#7a7468; font-size:14px; line-height:1.6; }
-  .popup .acts { display:flex; gap:10px; justify-content:center; }
+  body { 
+    margin:0; 
+    background: var(--bg-primary); 
+    color: var(--text-primary);
+    font-family: var(--font-sans); 
+    line-height: 1.6;
+    transition: background 0.3s ease, color 0.3s ease;
+    overflow-x: hidden;
+  }
+  
+  /* 滚动条美化 */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { 
+    background: var(--border-color); 
+    border-radius: 10px; 
+  }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+  /* 容器布局 */
+  .wrap { 
+    max-width: 1200px; 
+    margin: 0 auto; 
+    padding: 24px 20px 60px; 
+  }
+
+  /* 顶部导航栏 */
+  .app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1.5px dashed var(--border-color);
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .brand .logo-icon {
+    width: 38px;
+    height: 38px;
+    background: var(--ink);
+    color: #FFF;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px var(--accent-glow);
+    transition: var(--transition);
+  }
+  .brand .logo-icon svg { width: 20px; height: 20px; }
+  .brand:hover .logo-icon { transform: scale(1.05) rotate(-3deg); }
+  
+  .brand h1 { 
+    margin: 0; 
+    font-size: 20px; 
+    font-weight: 800; 
+    letter-spacing: -0.5px;
+    color: var(--text-primary);
+  }
+  .brand .subtitle { 
+    margin: 2px 0 0; 
+    font-size: 11px; 
+    color: var(--text-muted); 
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  /* 主面板网格 */
+  .workspace-grid {
+    display: grid;
+    grid-template-columns: 1.15fr 1fr;
+    gap: 28px;
+    align-items: start;
+  }
+  @media (max-width: 968px) {
+    .workspace-grid { grid-template-columns: 1fr; }
+  }
+
+  /* 通用卡片容器 */
+  .card { 
+    border: 1px solid var(--border-color); 
+    border-radius: var(--radius-lg); 
+    background: var(--bg-card); 
+    padding: 24px;
+    box-shadow: var(--shadow-sm); 
+    display: flex; 
+    flex-direction: column; 
+    transition: var(--transition);
+  }
+  .card:hover {
+    box-shadow: var(--shadow-md);
+  }
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+  }
+  .card-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-primary);
+  }
+  .card-header .badge {
+    background: var(--accent-glow);
+    color: var(--accent);
+    padding: 3px 8px;
+    border-radius: 30px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  /* 表单与输入框 */
+  .field-label { 
+    font-size: 13px; 
+    font-weight: 600;
+    color: var(--text-secondary); 
+    margin: 0 0 8px; 
+  }
+  .textarea-container {
+    position: relative;
+    margin-bottom: 20px;
+  }
+  textarea#md { 
+    width: 100%; 
+    min-height: 240px; 
+    padding: 16px; 
+    border: 1.5px solid var(--border-color); 
+    border-radius: var(--radius-md);
+    background: var(--bg-input); 
+    font-size: 14px; 
+    line-height: 1.7; 
+    resize: vertical; 
+    font-family: inherit; 
+    color: var(--text-primary); 
+    outline: none;
+    transition: var(--transition);
+  }
+  textarea#md:focus {
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 4px var(--accent-glow);
+    background: var(--bg-card);
+  }
+
+  /* 参数配置条 */
+  .style-options-grid { 
+    display: grid;
+    grid-template-columns: 1fr 120px;
+    gap: 16px;
+    margin-bottom: 18px;
+  }
+  .style-options-grid .subtitle-field {
+    grid-column: span 2;
+  }
+  .field { 
+    display: flex; 
+    flex-direction: column; 
+    gap: 6px; 
+  }
+  .field label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+  
+  /* 自定义 Select 包装 */
+  .select-wrapper {
+    position: relative;
+    width: 100%;
+  }
+  .select-wrapper::after {
+    content: '';
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid var(--text-secondary);
+    border-bottom: 2px solid var(--text-secondary);
+    transform: translateY(-60%) rotate(45deg);
+    pointer-events: none;
+    transition: var(--transition);
+  }
+  select, input[type=text], input[type=password] { 
+    width: 100%;
+    padding: 9px 12px; 
+    border: 1.5px solid var(--border-color); 
+    border-radius: var(--radius-sm); 
+    background: var(--bg-input);
+    font-size: 14px; 
+    font-family: inherit; 
+    color: var(--text-primary); 
+    outline: none;
+    transition: var(--transition);
+  }
+  select {
+    appearance: none;
+    padding-right: 32px;
+  }
+  input[type=text]:focus, select:focus, input[type=password]:focus { 
+    border-color: var(--border-focus);
+    background: var(--bg-card);
+    box-shadow: 0 0 0 4px var(--accent-glow);
+  }
+
+  /* 悬浮/叠层设置 Accordion */
+  details.settings { 
+    border: 1.5px solid var(--border-color); 
+    border-radius: var(--radius-md); 
+    background: var(--bg-input); 
+    margin-bottom: 20px;
+    overflow: hidden;
+    transition: var(--transition);
+  }
+  details.settings summary { 
+    cursor: pointer; 
+    padding: 12px 16px; 
+    font-size: 13px; 
+    font-weight: 600;
+    color: var(--text-secondary); 
+    user-select: none; 
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  details.settings summary::-webkit-details-marker { display: none; }
+  details.settings summary::after {
+    content: '+';
+    font-size: 16px;
+    font-weight: 400;
+    transition: var(--transition);
+  }
+  details.settings[open] {
+    background: var(--bg-card);
+  }
+  details.settings[open] summary {
+    border-bottom: 1.5px solid var(--border-color);
+  }
+  details.settings[open] summary::after {
+    content: '−';
+  }
+  details.settings .body { 
+    padding: 16px; 
+  }
+  .cfg-label { 
+    font-size: 12px; 
+    font-weight: 700; 
+    color: var(--ink); 
+    margin: 0 0 10px; 
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .cfg-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border-color);
+  }
+  .cfg-row { 
+    display: grid; 
+    grid-template-columns: 1.2fr 1fr 1.5fr;
+    gap: 12px; 
+    align-items: end; 
+    margin-bottom: 16px;
+  }
+  @media (max-width: 540px) {
+    .cfg-row { grid-template-columns: 1fr; }
+  }
+  .hint { 
+    font-size: 11px; 
+    color: var(--text-muted); 
+    margin: 8px 0 0; 
+  }
+
+  /* 按钮动作栏 */
+  .actions-panel { 
+    display: flex; 
+    gap: 12px; 
+    flex-wrap: wrap; 
+    align-items: center; 
+    margin-top: 6px; 
+  }
+  button { 
+    background: var(--ink); 
+    color: #fff; 
+    border: none; 
+    border-radius: var(--radius-sm); 
+    padding: 11px 24px; 
+    font-size: 14px; 
+    font-weight: 600;
+    cursor: pointer; 
+    font-family: inherit; 
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    transition: var(--transition);
+  }
+  button:hover:not(:disabled) { 
+    transform: translateY(-1.5px);
+    box-shadow: 0 6px 14px var(--accent-glow);
+    filter: brightness(1.08);
+  }
+  button:active:not(:disabled) {
+    transform: translateY(0.5px);
+  }
+  
+  button.ghost { 
+    background: transparent; 
+    color: var(--text-primary); 
+    border: 1.5px solid var(--border-color); 
+    box-shadow: none;
+  }
+  button.ghost:hover:not(:disabled) { 
+    background: var(--bg-input); 
+    border-color: var(--text-muted);
+    transform: translateY(-1.5px);
+  }
+  
+  button.btn-accent {
+    background: var(--accent);
+    color: #fff;
+  }
+  
+  button:disabled { 
+    opacity: 0.5; 
+    cursor: not-allowed; 
+    transform: none !important;
+    box-shadow: none !important;
+  }
+
+  /* 主题按钮 */
+  .theme-toggle-btn {
+    background: transparent;
+    border: 1.5px solid var(--border-color);
+    border-radius: 50%;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-primary);
+    cursor: pointer;
+    box-shadow: none;
+    transition: var(--transition);
+  }
+  .theme-toggle-btn:hover {
+    background: var(--bg-input);
+    transform: rotate(15deg) scale(1.05);
+  }
+  .theme-toggle-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* 状态指示器 */
+  .status-indicator {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: var(--bg-input);
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border-color);
+    display: inline-block;
+    transition: var(--transition);
+  }
+  .status-indicator:empty { display: none; }
+
+  /* ========================================================
+     右栏：画廊与生成体验 Redesign
+     ======================================================== */
+  .preview-card {
+    min-height: 520px;
+    background: var(--bg-card);
+  }
+
+  /* 1. 创意展台 - 空白页 */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 40px 10px;
+    flex: 1;
+  }
+  .empty-state.hidden { display: none; }
+  .empty-state .empty-icon {
+    width: 80px;
+    height: 80px;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+    opacity: 0.65;
+  }
+  .empty-state h4 {
+    margin: 0 0 8px;
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--text-primary);
+  }
+  .empty-state p {
+    font-size: 13px;
+    max-width: 320px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+    margin: 0 0 24px;
+  }
+  .design-tips {
+    text-align: left;
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    max-width: 380px;
+    width: 100%;
+  }
+  .design-tips .tip-item {
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+    display: flex;
+    gap: 6px;
+  }
+  .design-tips .tip-item:last-child { margin-bottom: 0; }
+
+  /* 2. 步骤式加载器 - Stepper Loader */
+  .step-loader {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding: 20px 10px;
+    flex: 1;
+    justify-content: center;
+  }
+  .step-loader.hidden { display: none; }
+  
+  /* 骨架屏 */
+  .shimmer-card {
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    background: var(--bg-card);
+    position: relative;
+    overflow: hidden;
+  }
+  .shimmer-media {
+    width: 100%;
+    aspect-ratio: 47/20;
+    border-radius: var(--radius-sm);
+    background: var(--bg-input);
+  }
+  .shimmer-line {
+    height: 12px;
+    background: var(--bg-input);
+    border-radius: 4px;
+    margin-top: 14px;
+  }
+  .shimmer-line.title { width: 40%; }
+  .shimmer-line.text { width: 85%; }
+  
+  /* 闪烁光效 */
+  @keyframes shimmer {
+    100% { transform: translateX(100%); }
+  }
+  .shimmer-card::after {
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+    animation: shimmer 1.5s infinite;
+    content: '';
+  }
+  .dark-theme .shimmer-card::after {
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent);
+  }
+
+  /* 步骤条 */
+  .loader-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 320px;
+    margin: 0 auto;
+    width: 100%;
+  }
+  .loader-step {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    opacity: 0.35;
+    transition: var(--transition);
+  }
+  .loader-step .step-bullet {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--border-color);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .loader-step .step-text {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+  
+  .loader-step.active {
+    opacity: 1;
+  }
+  .loader-step.active .step-bullet {
+    background: var(--ink);
+    color: #FFF;
+    box-shadow: 0 0 10px var(--accent-glow);
+    animation: pulse 1.5s infinite alternate;
+  }
+  .loader-step.active .step-text {
+    color: var(--text-primary);
+    font-weight: 700;
+  }
+  
+  .loader-step.success {
+    opacity: 0.8;
+  }
+  .loader-step.success .step-bullet {
+    background: #52B788;
+    color: #FFF;
+  }
+  .loader-step.success .step-text {
+    color: var(--text-secondary);
+    text-decoration: line-through;
+  }
+
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    100% { transform: scale(1.08); }
+  }
+
+  /* 3. 产出卡片 - Generated Covers Display */
+  .covers { display: flex; flex-direction: column; gap: 24px; }
+  .cover-card {
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background: var(--bg-card);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition);
+  }
+  .cover-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
+  }
+  .cover-card-header {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-input);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .cover-index {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent);
+    background: var(--accent-glow);
+    padding: 2px 7px;
+    border-radius: 12px;
+  }
+  .cover-hook {
+    font-size: 13px;
+    color: var(--text-primary);
+    font-family: var(--font-serif);
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 80%;
+  }
+  
+  .cover-media {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 47/20;
+    background: #F4F4F5;
+  }
+  .cover-media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  
+  /* 悬浮操作面板 */
+  .cover-overlay-actions {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: var(--transition);
+  }
+  .cover-card:hover .cover-overlay-actions {
+    opacity: 1;
+  }
+  .btn-dl {
+    background: #FFF;
+    color: #1E293B;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 700;
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transition: var(--transition);
+  }
+  .btn-dl svg { width: 14px; height: 14px; }
+  .btn-dl:hover {
+    transform: scale(1.05);
+    background: var(--bg-primary);
+  }
+  
+  .cover-concept {
+    padding: 16px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+    border-top: 1px solid var(--border-color);
+  }
+
+  /* 提示词卡片 - Prompt Cards */
+  .prompts { display: flex; flex-direction: column; gap: 16px; }
+  .prompt-card {
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background: var(--bg-card);
+    padding: 16px;
+  }
+  .prompt-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .prompt-index {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--ink);
+    background: var(--bg-input);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .prompt-hook {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-family: var(--font-serif);
+    font-weight: 700;
+  }
+  .prompt-title {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+  }
+  .prompt-textarea-wrapper {
+    position: relative;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+  }
+  .prompt-card textarea {
+    width: 100%;
+    min-height: 120px;
+    border: none;
+    padding: 12px;
+    background: var(--bg-input);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1.6;
+    resize: none;
+    outline: none;
+  }
+  .prompt-card-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+  }
+  .btn-copy {
+    padding: 6px 14px;
+    font-size: 12px;
+  }
+  .status-msg {
+    font-size: 11px;
+    font-weight: 600;
+    transition: var(--transition);
+  }
+  .status-msg.success { color: #52B788; }
+  .status-msg.error { color: #E07A5F; }
+
+  /* ========================================================
+     微信沉浸式排版工作台
+     ======================================================== */
+  .modal { 
+    display: none; 
+    position: fixed; 
+    inset: 0; 
+    z-index: 50; 
+    background: var(--bg-primary); 
+    flex-direction: column; 
+  }
+  .modal.open { display: flex; }
+  
+  .modal-head { 
+    display: flex; 
+    align-items: center; 
+    gap: 16px; 
+    padding: 12px 24px; 
+    border-bottom: 1.5px dashed var(--border-color); 
+    background: var(--bg-card); 
+  }
+  .modal-title { 
+    font-size: 16px; 
+    font-weight: 800; 
+    color: var(--text-primary); 
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .modal-body { 
+    flex: 1; 
+    display: flex; 
+    min-height: 0; 
+  }
+  
+  /* 编辑器端 */
+  .pane-src { 
+    flex: 1.1; 
+    min-width: 0; 
+    border: none; 
+    border-right: 1.5px dashed var(--border-color); 
+    padding: 24px;
+    font-size: 14px; 
+    line-height: 1.8; 
+    font-family: var(--font-mono); 
+    resize: none; 
+    background: var(--bg-card); 
+    color: var(--text-primary); 
+    outline: none; 
+  }
+  .pane-src:focus {
+    background: var(--bg-input);
+  }
+  
+  /* 手机模型端 */
+  .phone-mockup-wrapper {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 24px;
+    background: var(--bg-primary);
+    overflow-y: auto;
+  }
+  
+  .phone-mockup {
+    width: 393px;
+    max-width: 100%;
+    height: calc(100vh - 120px);
+    max-height: 840px;
+    background: #FFFFFF;
+    border: 1.5px solid var(--border-color);
+    border-radius: 36px;
+    box-shadow: var(--shadow-lg);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: var(--transition);
+  }
+  
+  /* iOS 状态栏 iOS Status Bar */
+  .phone-status-bar {
+    height: 38px;
+    background: #FFFFFF;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px 0;
+    font-size: 11px;
+    font-weight: 600;
+    color: #000000;
+    user-select: none;
+  }
+  .phone-time {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .phone-time-icon {
+    width: 10px;
+    height: 10px;
+  }
+  .phone-island {
+    width: 85px;
+    height: 16px;
+    background: #000000;
+    border-radius: 10px;
+    margin-top: -4px;
+  }
+  .phone-signals {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .phone-signal-icon {
+    width: 12px;
+    height: 12px;
+  }
+  .phone-battery {
+    border: 1px solid #000000;
+    padding: 0 4px;
+    font-size: 8px;
+    border-radius: 3px;
+    font-weight: 700;
+    line-height: 1.1;
+  }
+  
+  /* 微信顶部导航栏 WeChat Navbar */
+  .phone-wechat-nav {
+    height: 48px;
+    background: #FFFFFF;
+    border-bottom: 1.5px solid rgba(0, 0, 0, 0.04);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    user-select: none;
+    color: #000000;
+  }
+  .phone-nav-left, .phone-nav-right {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .phone-nav-left svg, .phone-nav-right svg {
+    width: 18px;
+    height: 18px;
+    display: block;
+  }
+  .phone-nav-center {
+    font-size: 14px;
+    font-weight: 700;
+  }
+  
+  /* 微信底部互动栏 Bottom WeChat Bar */
+  .phone-wechat-footer {
+    height: 52px;
+    background: #FAFAFA;
+    border-top: 1.5px solid #F0F0F0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    user-select: none;
+  }
+  .author-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .author-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #E8E3D7;
+    color: #706B60;
+    font-size: 10px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .author-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: #2C2B29;
+  }
+  .interaction-icons {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .icon-item {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    color: #64748B;
+  }
+  .icon-item svg {
+    width: 15px;
+    height: 15px;
+    display: block;
+  }
+  .icon-item span {
+    font-size: 10px;
+    font-weight: 600;
+  }
+  
+  .phone-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 18px;
+    color: #333333;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    background: #FFF;
+  }
+  
+  @media (max-width: 768px) { 
+    .modal-body { flex-direction: column; } 
+    .pane-src { border-right: none; border-bottom: 1.5px dashed var(--border-color); flex: 1; }
+    .phone-mockup-wrapper { padding: 16px; flex: 1.2; }
+    .phone-mockup { width: 100%; height: auto; flex: 1; min-height: 480px; }
+  }
+
+  /* 微信排版内联样式自定义重置 */
+  .phone-content h1 { font-size: 20px; font-weight: 700; color: #1E293B; margin-top: 24px; margin-bottom: 12px; }
+  .phone-content p { font-size: 15px; color: #374151; margin-bottom: 16px; text-align: justify; }
+
+  /* 弹窗警告 - API Key missing popup */
+  .popup-mask { 
+    display: none; 
+    position: fixed; 
+    inset: 0; 
+    z-index: 60; 
+    background: rgba(10, 14, 22, 0.6);
+    backdrop-filter: blur(6px);
+    align-items: center; 
+    justify-content: center; 
+    padding: 20px; 
+  }
+  .popup-mask.open { display: flex; }
+  
+  .popup { 
+    background: var(--bg-card); 
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg); 
+    padding: 32px; 
+    max-width: 380px; 
+    text-align: center;
+    box-shadow: var(--shadow-lg); 
+  }
+  .popup .badge-alert { 
+    width: 46px; 
+    height: 46px; 
+    line-height: 42px; 
+    margin: 0 auto 16px; 
+    border-radius: 50%;
+    background: var(--accent-glow); 
+    border: 2px solid var(--accent);
+    color: var(--accent); 
+    font-size: 24px; 
+    font-weight: 800; 
+  }
+  .popup h3 { margin: 0 0 10px; color: var(--text-primary); font-size: 18px; font-weight: 800; }
+  .popup p { margin: 0 0 24px; color: var(--text-secondary); font-size: 13px; line-height: 1.6; }
+  .popup .acts { display: flex; gap: 12px; justify-content: center; }
+  
+  /* SVG 图标通用 */
+  .icon-svg {
+    width: 16px;
+    height: 16px;
+    display: inline-block;
+    vertical-align: middle;
+  }
+
+  /* 看大图灯箱 */
+  .cover-overlay-actions { gap: 10px; }
+  .lightbox {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    background: rgba(10, 14, 22, 0.88);
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    cursor: zoom-out;
+  }
+  .lightbox.open { display: flex; }
+  .lightbox img {
+    max-width: 96vw;
+    max-height: 92vh;
+    border-radius: 8px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  }
 </style>
 </head>
-<body>
+<body class="light-theme">
 <div class="wrap">
-  <h1>封面生成</h1>
-
-  <div class="card">
-    <div class="controls">
-      <div class="field">风格
-        <select id="preset">
-          <option value="default">暖纸蓝（默认）</option>
-          <option value="cold-industrial">冷工业灰</option>
-          <option value="warm-orange">暖橘活泼</option>
-          <option value="dark-editorial">深色编辑风</option>
-          <option value="academic">学术纯排版</option>
-        </select>
+  
+  <!-- 顶部导航栏 -->
+  <header class="app-header">
+    <div class="brand">
+      <div class="logo-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
       </div>
-      <div class="field">候选数
-        <select id="variants">
-          <option value="1">1 张</option>
-          <option value="2">2 张</option>
-          <option value="3">3 张</option>
-        </select>
-      </div>
-      <div class="field">角落小字（选填）
-        <input type="text" id="subtitle" placeholder="yourdomain.com · 2026.05.22">
+      <div>
+        <h1>wechatcover</h1>
+        <p class="subtitle">AI 智能公众号封面设计舱</p>
       </div>
     </div>
+    <div class="header-actions">
+      <button id="themeToggle" class="theme-toggle-btn" title="切换深/浅主题">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+      </button>
+    </div>
+  </header>
 
-    <details class="settings" open>
-      <summary>设置：模型 / API Key（填了用页面的，留空用 .env）</summary>
-      <div class="body">
-        <div class="cfg-label">艺术指导（读文章 → 想钩子/画面 → 写提示词）</div>
-        <div class="cfg-row">
-          <div class="field">Provider
-            <select id="artProvider">
-              <option value="deepseek">DeepSeek</option>
-              <option value="qwen">通义千问 Qwen</option>
-            </select>
+  <!-- 工作区双栏 -->
+  <div class="workspace-grid">
+    
+    <!-- 左栏：编辑器与参数区 -->
+    <div class="workspace-left">
+      <div class="card editor-card">
+        <div class="card-header">
+          <h3>
+            <svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            编辑与配置
+          </h3>
+          <span class="badge">Workspace</span>
+        </div>
+
+        <p class="field-label">粘贴文章（第一行为 <code># 标题</code>，出图自动提取核心段落）</p>
+        <div class="textarea-container">
+          <textarea id="md" placeholder="# 我的文章标题&#10;&#10;将文章正文粘贴到这里，AI 艺术指导模块会自动为您分析文章，提炼核心钩子与构图画面……"></textarea>
+        </div>
+
+        <div class="style-options-grid">
+          <div class="field">
+            <label for="preset">风格艺术预设</label>
+            <div class="select-wrapper">
+              <select id="preset">
+                <option value="default">暖纸蓝（默认）</option>
+                <option value="cold-industrial">冷工业灰</option>
+                <option value="warm-orange">暖橘活泼</option>
+                <option value="dark-editorial">深色编辑风</option>
+                <option value="academic">学术纯排版</option>
+              </select>
+            </div>
           </div>
-          <div class="field">模型
-            <select id="artModel"></select>
+          <div class="field">
+            <label for="variants">候选张数</label>
+            <div class="select-wrapper">
+              <select id="variants">
+                <option value="1">1 张</option>
+                <option value="2">2 张</option>
+                <option value="3">3 张</option>
+              </select>
+            </div>
           </div>
-          <div class="field">API Key
-            <input type="password" id="artKey" autocomplete="off" placeholder="sk-…">
+          <div class="field subtitle-field">
+            <label for="subtitle">角落小字（选填）</label>
+            <input type="text" id="subtitle" placeholder="yourdomain.com · 2026.05.22">
           </div>
         </div>
 
-        <div class="cfg-label">生图</div>
-        <div class="cfg-row">
-          <div class="field">出图后端
-            <select id="provider">
-              <option value="openai">GPT-Image-2（默认）</option>
-              <option value="qwen">通义千问 Qwen-Image（国内）</option>
-            </select>
-          </div>
-          <div class="field">图像模型（选填）
-            <input type="text" id="imageModel" placeholder="按后端默认（qwen: qwen-image-2.0-pro-…）">
-          </div>
-          <div class="field">API Key
-            <input type="password" id="imgKey" autocomplete="off" placeholder="sk-…">
-          </div>
-        </div>
-        <p class="hint">Key 只存在你本机浏览器、并发到本机运行的服务用于出图，不上传别处、不写日志。</p>
-      </div>
-    </details>
+        <!-- 极客设置 accordion -->
+        <details class="settings">
+          <summary>设置：模型与 API 凭证管理 (可选)</summary>
+          <div class="body">
+            <div class="cfg-label">艺术指导 (提取核心钩子 & 画面意象)</div>
+            <div class="cfg-row">
+              <div class="field">
+                <label for="artProvider">Provider</label>
+                <div class="select-wrapper">
+                  <select id="artProvider">
+                    <option value="deepseek">DeepSeek</option>
+                    <option value="qwen">通义千问 Qwen</option>
+                  </select>
+                </div>
+              </div>
+              <div class="field">
+                <label for="artModel">LLM 模型</label>
+                <div class="select-wrapper">
+                  <select id="artModel"></select>
+                </div>
+              </div>
+              <div class="field">
+                <label for="artKey">API Key</label>
+                <input type="password" id="artKey" autocomplete="off" placeholder="sk-…">
+              </div>
+            </div>
 
-    <div class="actions">
-      <button id="gen">生成封面</button>
-      <button class="ghost" id="promptBtn">只出提示词</button>
-      <button class="ghost" id="wechatBtn">导出微信排版 HTML</button>
+            <div class="cfg-label">封面生图 (GPT-Image 或通义绘图)</div>
+            <div class="cfg-row">
+              <div class="field">
+                <label for="provider">出图后端</label>
+                <div class="select-wrapper">
+                  <select id="provider">
+                    <option value="openai">OpenAI（默认）</option>
+                    <option value="qwen">通义千问 Qwen（国内）</option>
+                  </select>
+                </div>
+              </div>
+              <div class="field">
+                <label for="imageModel">图像模型</label>
+                <div class="select-wrapper">
+                  <select id="imageModel"></select>
+                </div>
+              </div>
+              <div class="field">
+                <label for="imgKey">API Key</label>
+                <input type="password" id="imgKey" autocomplete="off" placeholder="sk-…">
+              </div>
+            </div>
+            <p class="hint">凭证仅在本地浏览器和本地服务器中转发，不会上传至任何第三方服务器或日志中。</p>
+          </div>
+        </details>
+
+        <!-- 动作按钮面板 -->
+        <div class="actions-panel">
+          <button id="gen">
+            <svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m12 3-1.912 5.886L4.202 10.8 10.088 12.7 12 18.588l1.912-5.886 5.886-1.912-5.886-1.912Z"/></svg>
+            生成新封面
+          </button>
+          <button class="ghost" id="promptBtn">只出提示词</button>
+          <button class="btn-accent" id="wechatBtn">
+            <svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><line x1="9" x2="15" y1="9" y2="9"/><line x1="9" x2="15" y1="13" y2="13"/><line x1="9" x2="13" y1="17" y2="17"/></svg>
+            微信排版工作台
+          </button>
+        </div>
+      </div>
     </div>
 
-    <div class="status" id="status"></div>
-    <div class="covers" id="covers"></div>
-    <div class="prompts" id="prompts"></div>
+    <!-- 右栏：画廊与预览展台 -->
+    <div class="workspace-right">
+      <div class="card preview-card">
+        <div class="card-header">
+          <h3>
+            <svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+            画布展台
+          </h3>
+          <div class="status-indicator" id="status"></div>
+        </div>
 
-    <p class="sub" style="margin-top:18px">粘贴文章（Markdown，第一行 <code># 标题</code>）。出图前这里是焦点；出图后下移，重点看封面。</p>
-    <textarea id="md" placeholder="# 我的文章标题&#10;&#10;正文粘贴到这里……"></textarea>
+        <!-- 1. 空白初始卡片 -->
+        <div class="empty-state" id="emptyState">
+          <svg class="empty-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+          <h4>封面会显示在这里</h4>
+          <p>在左侧粘贴文章、点「生成新封面」，出图结果会出现在这一区。采用编辑插画风格，按公众号首图比例输出。</p>
+          <div class="design-tips">
+            <div class="tip-item">🏷️ <b>数字钩子</b>：文章里有数字（百分比、金额、量级）时，优先用它做钩子。</div>
+            <div class="tip-item">📏 <b>固定比例</b>：统一按 47:20（2.35:1）排版，适配公众号首图。</div>
+            <div class="tip-item">🪄 <b>避开 AI 套路</b>：内置黑名单，避开电路板、发光大脑、机器握手等常见套路图。</div>
+          </div>
+        </div>
+
+        <!-- 2. 步骤式加载骨架 -->
+        <div class="step-loader hidden" id="stepLoader">
+          <div class="shimmer-card">
+            <div class="shimmer-media"></div>
+            <div class="shimmer-line title"></div>
+            <div class="shimmer-line text"></div>
+          </div>
+          <div class="loader-steps">
+            <div class="loader-step" id="step1">
+              <span class="step-bullet">1</span>
+              <span class="step-text">提取文章核心抓手与情绪钩子...</span>
+            </div>
+            <div class="loader-step" id="step2">
+              <span class="step-bullet">2</span>
+              <span class="step-text">构思画面视觉意象与排版布局...</span>
+            </div>
+            <div class="loader-step" id="step3">
+              <span class="step-bullet">3</span>
+              <span class="step-text">调用 GPT-Image 生图进行艺术渲染...</span>
+            </div>
+            <div class="loader-step" id="step4">
+              <span class="step-bullet">4</span>
+              <span class="step-text">自动运行中文渲染质检与整备输出...</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. 输出显示卡 -->
+        <div class="covers" id="covers"></div>
+        <div class="prompts" id="prompts"></div>
+      </div>
+    </div>
+
   </div>
 </div>
 
-<!-- 全屏排版工作台：左编辑 markdown，右实时预览，复制富文本粘进公众号 -->
+<!-- 微信排版工作台：全屏 modal，源文实时编辑 → 预览实时渲染 -->
 <div class="modal" id="wechatModal">
   <div class="modal-head">
-    <span class="modal-title">微信排版工作台</span>
-    <span class="status" id="copyStatus" style="margin:0"></span>
+    <span class="modal-title">
+      <svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><line x1="9" x2="15" y1="9" y2="9"/><line x1="9" x2="15" y1="13" y2="13"/><line x1="9" x2="13" y1="17" y2="17"/></svg>
+      微信公众号沉浸式排版工作台
+    </span>
+    <span class="status-msg" id="copyStatus" style="margin-left: 10px;"></span>
     <span style="flex:1"></span>
-    <button id="copyHtml">复制（富文本）</button>
-    <button class="ghost" id="wechatClose">关闭</button>
+    <button id="copyHtml">
+      <svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+      复制富文本格式
+    </button>
+    <button class="ghost" id="wechatClose">退出工作台</button>
   </div>
   <div class="modal-body">
-    <textarea id="wechatSrc" class="pane-src" placeholder="# 标题&#10;&#10;在这里编辑 markdown，右侧实时预览…"></textarea>
-    <div id="wechatPreview" class="pane-preview"></div>
+    <textarea id="wechatSrc" class="pane-src" placeholder="# 标题&#10;&#10;在这里编辑 Markdown，右侧手机框中将进行高保真公众号内联样式渲染……"></textarea>
+    
+    <!-- 手机模型预览层 -->
+    <div class="phone-mockup-wrapper">
+      <div class="phone-mockup">
+        <!-- iOS 状态栏 iOS Status Bar -->
+        <div class="phone-status-bar">
+          <div class="phone-time">
+            17:06
+            <svg class="phone-time-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
+          </div>
+          <div class="phone-island"></div>
+          <div class="phone-signals" style="display: flex; align-items: center; gap: 5px;">
+            <!-- 蜂窝网络信号 Cellular Signal -->
+            <svg viewBox="0 0 24 24" fill="currentColor" style="width: 12px; height: 12px; opacity: 0.9;"><path d="M2 18h2v2H2zm4-4h2v6H6zm4-4h2v10h-2zm4-4h2v14h-2zm4-4h2v18h-2z"/></svg>
+            <!-- Wifi 信号 Wifi Signal -->
+            <svg viewBox="0 0 24 24" fill="currentColor" style="width: 12px; height: 12px; opacity: 0.9;"><path d="M12 21l-1.41-1.41C8.25 17.25 4.35 17.25 2 19.4L0 17.4C3.9 13.5 10.24 13.5 14.14 17.4l-2.14 2.15zM12 16.5c-3.15 0-5.7 2.55-5.7 5.7h11.4c0-3.15-2.55-5.7-5.7-5.7z"/></svg>
+            <!-- 高拟真精细电量图标 Thin Battery Pill -->
+            <div style="display: inline-flex; align-items: center; gap: 3px; position: relative;">
+              <svg viewBox="0 0 22 11" fill="none" stroke="currentColor" stroke-width="1.2" style="width: 20px; height: 10px; display: block; opacity: 0.95;">
+                <rect x="0.6" y="0.6" width="17.8" height="9.8" rx="2.5"/>
+                <rect x="2.5" y="2.5" width="10" height="4.8" rx="1" fill="currentColor" stroke="none"/>
+                <path d="M20 3.5v4" stroke-linecap="round"/>
+              </svg>
+              <span style="font-size: 8.5px; font-weight: 700; transform: scale(0.95); margin-left: -1px;">90</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 微信顶部导航栏 WeChat Nav Bar -->
+        <div class="phone-wechat-nav">
+          <div class="phone-nav-left">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </div>
+          <div class="phone-nav-center">微信公众号预览</div>
+          <div class="phone-nav-right">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+          </div>
+        </div>
+
+        <!-- 手机内容区 Content -->
+        <div id="wechatPreview" class="phone-content pane-preview"></div>
+
+        <!-- 微信底部互动栏 WeChat Interactive Bottom Bar -->
+        <div class="phone-wechat-footer">
+          <div class="author-info">
+            <div class="author-avatar" style="background: var(--ink); color: #FFF;">首</div>
+            <span class="author-name">公众号作者</span>
+          </div>
+          <div class="interaction-icons" style="gap: 16px;">
+            <div class="icon-item" title="分享">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+            </div>
+            <div class="icon-item" title="分享朋友圈">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            </div>
+            <div class="icon-item" title="收藏">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            </div>
+            <div class="icon-item" title="写留言">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
 <!-- API Key 缺失提醒 -->
 <div class="popup-mask" id="keyPopup">
   <div class="popup">
-    <div class="badge">!</div>
-    <h3>还差一步：填入 API Key</h3>
+    <div class="badge-alert">!</div>
+    <h3>还差一步：需要补齐 API Key</h3>
     <p id="keyPopupMsg">生成封面需要「艺术指导」和「生图」两个 key。</p>
     <div class="acts">
-      <button id="keyGoSettings">去填写</button>
-      <button class="ghost" id="keyPopupClose">稍后</button>
+      <button id="keyGoSettings">立即去填写</button>
+      <button class="ghost" id="keyPopupClose">稍后处理</button>
     </div>
   </div>
 </div>
 
+<!-- 看大图灯箱 -->
+<div class="lightbox" id="lightbox"><img id="lightboxImg" src="" alt="封面大图"></div>
+
 <script>
 const $ = (id) => document.getElementById(id);
 const statusEl = $('status');
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 const ART_MODELS = { deepseek: ['deepseek-v4-flash', 'deepseek-chat'], qwen: ['qwen3-max', 'qwen-plus'] };
+const IMAGE_MODELS = { openai: ['gpt-image-2', 'gpt-image-1'], qwen: ['qwen-image-2.0-pro-2026-04-22', 'qwen-image-max'] };
 const KEY_LABEL = { OPENAI_API_KEY: 'OpenAI', DEEPSEEK_API_KEY: 'DeepSeek', DASHSCOPE_API_KEY: 'DashScope' };
+let lastCovers = [];
 
 // 中央 key 存储（按 key 名）；艺术指导/生图 的 key 输入框都映射到这里
 let keysStore = { OPENAI_API_KEY: '', DEEPSEEK_API_KEY: '', DASHSCOPE_API_KEY: '' };
@@ -201,6 +1413,11 @@ function populateArtModels(selected) {
   const opts = ART_MODELS[$('artProvider').value] || [];
   $('artModel').innerHTML = opts.map((m) => `<option value="${m}">${m}</option>`).join('');
   if (selected && opts.includes(selected)) $('artModel').value = selected;
+}
+function populateImageModels(selected) {
+  const opts = IMAGE_MODELS[$('provider').value] || [];
+  $('imageModel').innerHTML = opts.map((m) => `<option value="${m}">${m}</option>`).join('');
+  if (selected && opts.includes(selected)) $('imageModel').value = selected;
 }
 function syncKeyInputs() {
   const an = artKeyName(), inm = imgKeyName();
@@ -216,8 +1433,8 @@ function loadSettings() {
   if (s.keys) keysStore = { ...keysStore, ...s.keys };
   if (s.artProvider) $('artProvider').value = s.artProvider;
   if (s.provider) $('provider').value = s.provider;
-  if (s.imageModel != null) $('imageModel').value = s.imageModel;
   populateArtModels(s.artModel);
+  populateImageModels(s.imageModel);
   syncKeyInputs();
 }
 function saveSettings() {
@@ -254,60 +1471,176 @@ function keyInputFor(name) {
   return $('artKey');
 }
 function showKeyPopup(miss) {
-  $('keyPopupMsg').innerHTML = '还需要：' + miss.map((m) => `<b>${m.role}</b>（${KEY_LABEL[m.key]} Key）`).join('、');
+  $('keyPopupMsg').innerHTML = '还需要配置：' + miss.map((m) => `<b>${m.role}</b>（${KEY_LABEL[m.key]} Key）`).join('、');
   $('keyPopup').classList.add('open');
 }
 
+// ── 渲染生成结果 ──
 function renderCovers(covers) {
-  $('covers').innerHTML = '';
+  const wrap = $('covers');
+  wrap.innerHTML = '';
+  if (covers.length === 0) {
+    $('emptyState').classList.remove('hidden');
+    return;
+  }
+  $('emptyState').classList.add('hidden');
+  lastCovers = covers;
+
   covers.forEach((c, i) => {
     const div = document.createElement('div');
-    div.className = 'cover';
+    div.className = 'cover-card';
     const bust = c.url + '&t=' + Date.now();
-    div.innerHTML =
-      (c.hook ? `<div class="hook">钩子：${c.hook}</div>` : '') +
-      (c.visual_concept ? `<div class="vc">${c.visual_concept}</div>` : '') +
-      `<img src="${bust}" alt="cover ${i + 1}">` +
-      `<div class="row"><a class="dl" href="${c.url}" download="${c.file}">下载这张</a></div>`;
-    $('covers').appendChild(div);
-  });
-}
-function copyPlain(text, el) {
-  navigator.clipboard.writeText(text)
-    .then(() => { el.textContent = '已复制'; setTimeout(() => { el.textContent = ''; }, 1600); })
-    .catch(() => { el.textContent = '复制失败，请手动选中复制'; });
-}
-function renderPrompts(prompts) {
-  const wrap = $('prompts');
-  wrap.innerHTML = '';
-  prompts.forEach((p) => {
-    const div = document.createElement('div');
-    div.className = 'prompt-card';
-    if (p.hook) { const h = document.createElement('div'); h.className = 'hook'; h.textContent = '钩子：' + p.hook; div.appendChild(h); }
-    if (p.title_text) { const t = document.createElement('div'); t.className = 'vc'; t.textContent = '标题：' + p.title_text; div.appendChild(t); }
-    const ta = document.createElement('textarea'); ta.readOnly = true; ta.value = p.image_prompt; div.appendChild(ta);
-    const row = document.createElement('div'); row.className = 'row';
-    const btn = document.createElement('button'); btn.className = 'ghost'; btn.textContent = '复制提示词';
-    const st = document.createElement('span'); st.className = 'status'; st.style.margin = '0';
-    btn.addEventListener('click', () => copyPlain(ta.value, st));
-    row.appendChild(btn); row.appendChild(st); div.appendChild(row);
+    div.innerHTML = `
+      <div class="cover-card-header">
+        <span class="cover-index">方案 ${i + 1}</span>
+        ${c.hook ? `<div class="cover-hook"><b>抓手：</b>${esc(c.hook)}</div>` : ''}
+      </div>
+      <div class="cover-media">
+        <img src="${bust}" alt="cover ${i + 1}" loading="lazy">
+        <div class="cover-overlay-actions">
+          <button type="button" class="btn-dl btn-reroll" data-index="${i}" title="用同一份提示词再出一张">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
+            重出
+          </button>
+          <button type="button" class="btn-dl btn-zoom" data-src="${bust}">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/><line x1="11" x2="11" y1="8" y2="14"/><line x1="8" x2="14" y1="11" y2="11"/></svg>
+            看大图
+          </button>
+          <a class="btn-dl" href="${c.url}" download="${esc(c.file)}">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+            下载此封面
+          </a>
+        </div>
+      </div>
+      ${c.visual_concept ? `<div class="cover-concept"><b>意象构想：</b>${esc(c.visual_concept)}</div>` : ''}
+    `;
     wrap.appendChild(div);
   });
 }
 
+function copyPlain(text, el) {
+  navigator.clipboard.writeText(text)
+    .then(() => { 
+      el.textContent = '✓ 已复制'; 
+      el.className = 'status-msg success';
+      setTimeout(() => { el.textContent = ''; el.className = 'status-msg'; }, 2000); 
+    })
+    .catch(() => { 
+      el.textContent = '✗ 复制失败'; 
+      el.className = 'status-msg error';
+      setTimeout(() => { el.textContent = ''; el.className = 'status-msg'; }, 2000); 
+    });
+}
+
+function renderPrompts(prompts) {
+  const wrap = $('prompts');
+  wrap.innerHTML = '';
+  if (prompts.length === 0) {
+    $('emptyState').classList.remove('hidden');
+    return;
+  }
+  $('emptyState').classList.add('hidden');
+  
+  prompts.forEach((p, i) => {
+    const div = document.createElement('div');
+    div.className = 'prompt-card';
+    
+    let headerHtml = `<div class="prompt-card-header"><span class="prompt-index">方案 ${i + 1} 提示词</span>`;
+    if (p.hook) headerHtml += `<span class="prompt-hook"><b>抓手：</b>${esc(p.hook)}</span>`;
+    headerHtml += `</div>`;
+
+    let titleHtml = '';
+    if (p.title_text) titleHtml += `<div class="prompt-title"><b>画面主标题：</b>${esc(p.title_text)}</div>`;
+
+    div.innerHTML = `
+      ${headerHtml}
+      ${titleHtml}
+      <div class="prompt-textarea-wrapper">
+        <textarea readonly>${esc(p.image_prompt)}</textarea>
+      </div>
+      <div class="prompt-card-actions">
+        <button class="btn-copy ghost">
+          <svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+          复制提示词
+        </button>
+        <span class="status-msg"></span>
+      </div>
+    `;
+    
+    const btn = div.querySelector('.btn-copy');
+    const st = div.querySelector('.status-msg');
+    const ta = div.querySelector('textarea');
+    btn.addEventListener('click', () => copyPlain(ta.value, st));
+    
+    wrap.appendChild(div);
+  });
+}
+
+// ── 流式步骤加载管理 ──
+let stepTimer = null;
+function startStepLoader(previewOnly) {
+  const steps = ['step1', 'step2', 'step3', 'step4'];
+  steps.forEach(id => {
+    const el = $(id);
+    if (el) el.className = 'loader-step';
+  });
+  
+  $('emptyState').classList.add('hidden');
+  $('stepLoader').classList.remove('hidden');
+  
+  let currentStep = 0;
+  const updateSteps = () => {
+    steps.forEach((id, idx) => {
+      const el = $(id);
+      if (!el) return;
+      if (idx < currentStep) el.className = 'loader-step success';
+      else if (idx === currentStep) el.className = 'loader-step active';
+      else el.className = 'loader-step';
+    });
+  };
+  
+  updateSteps();
+  clearInterval(stepTimer);
+  
+  // 根据是否为只预览，估计步骤停留时间
+  const stepDuration = previewOnly ? 4000 : 12000;
+  const maxStep = previewOnly ? 1 : 3; // previewOnly 只走前两个步骤
+  
+  stepTimer = setInterval(() => {
+    if (currentStep < maxStep) {
+      currentStep++;
+      updateSteps();
+    } else {
+      clearInterval(stepTimer);
+    }
+  }, stepDuration);
+}
+
+function stopStepLoader() {
+  clearInterval(stepTimer);
+  $('stepLoader').classList.add('hidden');
+}
+
+// ── 核心生成处理 ──
 async function generate(previewOnly) {
   const markdown = $('md').value;
   if (!markdown.trim()) { statusEl.textContent = '请先粘贴文章内容'; return; }
   const miss = missingKeys(previewOnly);
   if (miss.length) { showKeyPopup(miss); return; }
+  
   const btn = previewOnly ? $('promptBtn') : $('gen');
   btn.disabled = true;
   saveSettings();
+  
   statusEl.textContent = previewOnly
-    ? '生成提示词中…（只跑艺术指导，约 10–20 秒）'
-    : '艺术指导 + 出图中…（约 30–60 秒/张，含中文渲染质检）';
+    ? '正在提取提示词…'
+    : '正在排版与出图…';
+    
   $('prompts').innerHTML = '';
-  $('covers').innerHTML = previewOnly ? '' : '<div class="covers-empty">正在生成…</div>';
+  $('covers').innerHTML = '';
+  
+  startStepLoader(previewOnly);
+  
   try {
     const data = await postJson('/generate', {
       markdown,
@@ -320,16 +1653,30 @@ async function generate(previewOnly) {
       keys: { ...keysStore },
       previewOnly: !!previewOnly,
     });
+    
+    stopStepLoader();
     if (previewOnly) {
-      statusEl.textContent = `生成 ${data.prompts.length} 条提示词——复制到网页版 LLM 出图`;
+      statusEl.textContent = `生成 ${data.prompts.length} 条方案`;
       renderPrompts(data.prompts);
     } else {
-      statusEl.textContent = `生成 ${data.covers.length} 张`;
+      statusEl.textContent = `成功生成 ${data.covers.length} 张`;
       renderCovers(data.covers);
     }
   } catch (e) {
-    statusEl.textContent = '出错：' + e.message;
-    if (!previewOnly) $('covers').innerHTML = '';
+    stopStepLoader();
+    statusEl.textContent = '生成失败';
+    $('emptyState').classList.remove('hidden');
+    // 使用简洁的错误气泡弹窗或在 covers 显示错误
+    const errDiv = document.createElement('div');
+    errDiv.className = 'covers-empty';
+    errDiv.style.color = '#E07A5F';
+    errDiv.style.border = '1px solid var(--border-color)';
+    errDiv.style.padding = '30px';
+    errDiv.style.borderRadius = '12px';
+    errDiv.style.textAlign = 'center';
+    errDiv.style.fontSize = '13px';
+    errDiv.innerHTML = `⚠️ <b>出错信息：</b>${esc(e.message)}`;
+    $('covers').appendChild(errDiv);
   } finally {
     btn.disabled = false;
   }
@@ -358,28 +1705,117 @@ async function renderWechatNow() {
 }
 function scheduleRender() { clearTimeout(renderTimer); renderTimer = setTimeout(renderWechatNow, 350); }
 
+// ── 主题模式管理 ──
+let activeTheme = 'light';
+function initTheme() {
+  const storedTheme = localStorage.getItem('wechatcover.theme');
+  if (storedTheme) {
+    activeTheme = storedTheme;
+  } else {
+    activeTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  applyTheme(activeTheme);
+}
+function applyTheme(theme) {
+  document.body.className = theme + '-theme';
+  localStorage.setItem('wechatcover.theme', theme);
+  const btn = $('themeToggle');
+  if (theme === 'dark') {
+    btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>`;
+    btn.title = "切换至暖纸亮色模式";
+  } else {
+    btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>`;
+    btn.title = "切换至 Obsidian 暗色模式";
+  }
+}
+function toggleTheme() {
+  activeTheme = activeTheme === 'light' ? 'dark' : 'light';
+  applyTheme(activeTheme);
+}
+
 // ── 事件绑定 ──
 $('gen').addEventListener('click', () => generate(false));
 $('promptBtn').addEventListener('click', () => generate(true));
 $('wechatBtn').addEventListener('click', openWechat);
 $('wechatClose').addEventListener('click', closeWechat);
 $('wechatSrc').addEventListener('input', scheduleRender);
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeWechat(); $('keyPopup').classList.remove('open'); } });
+$('themeToggle').addEventListener('click', toggleTheme);
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    closeWechat();
+    $('keyPopup').classList.remove('open');
+    $('lightbox').classList.remove('open');
+  }
+});
+
+// 看大图灯箱
+function openLightbox(src) { $('lightboxImg').src = src; $('lightbox').classList.add('open'); }
+$('lightbox').addEventListener('click', () => $('lightbox').classList.remove('open'));
+
+// 封面卡片上的操作：看大图 / 同提示词重出
+$('covers').addEventListener('click', (e) => {
+  const z = e.target.closest('.btn-zoom');
+  if (z) { e.preventDefault(); openLightbox(z.dataset.src); return; }
+  const rr = e.target.closest('.btn-reroll');
+  if (rr) { e.preventDefault(); reroll(parseInt(rr.dataset.index, 10), rr); return; }
+});
+
+async function reroll(index, btn) {
+  const cover = lastCovers[index];
+  if (!cover || !cover.image_prompt) { statusEl.textContent = '这张没有可复用的提示词'; return; }
+  const imgKey = imgKeyName();
+  if (!keyReady(imgKey)) { showKeyPopup([{ role: '生图', key: imgKey }]); return; }
+  const card = btn.closest('.cover-card');
+  const img = card.querySelector('.cover-media img');
+  btn.disabled = true;
+  card.style.opacity = '0.55';
+  statusEl.textContent = '同提示词重出中…';
+  try {
+    const data = await postJson('/render', {
+      image_prompt: cover.image_prompt,
+      provider: $('provider').value,
+      imageModel: $('imageModel').value,
+      keys: { ...keysStore },
+    });
+    const bust = data.url + '&t=' + Date.now();
+    img.src = bust;
+    cover.url = data.url; cover.file = data.file;
+    const dl = card.querySelector('a.btn-dl'); if (dl) { dl.href = data.url; dl.download = data.file; }
+    const zoom = card.querySelector('.btn-zoom'); if (zoom) zoom.dataset.src = bust;
+    statusEl.textContent = '已重出一张（同提示词）';
+  } catch (err) {
+    statusEl.textContent = '重出失败：' + err.message;
+  } finally {
+    btn.disabled = false;
+    card.style.opacity = '';
+  }
+}
 
 $('copyHtml').addEventListener('click', async () => {
   if (!lastHtml) { $('copyStatus').textContent = '还没有可复制的内容'; return; }
+  const st = $('copyStatus');
   try {
     await navigator.clipboard.write([new ClipboardItem({
       'text/html': new Blob([lastHtml], { type: 'text/html' }),
       'text/plain': new Blob([lastHtml], { type: 'text/plain' }),
     })]);
-    $('copyStatus').textContent = '已复制（带格式），直接粘进公众号编辑器';
+    st.textContent = '✓ 已成功复制到剪贴板，可直接粘入微信编辑器';
+    st.className = 'status-msg success';
+    setTimeout(() => { st.textContent = ''; st.className = 'status-msg'; }, 3000);
   } catch {
     const r = document.createRange();
     r.selectNodeContents($('wechatPreview'));
     const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
-    try { document.execCommand('copy'); $('copyStatus').textContent = '已复制'; }
-    catch { $('copyStatus').textContent = '复制失败，请手动选中预览区复制'; }
+    try { 
+      document.execCommand('copy'); 
+      st.textContent = '✓ 已复制'; 
+      st.className = 'status-msg success';
+    } catch { 
+      st.textContent = '✗ 复制失败，请手动选中预览内容进行复制'; 
+      st.className = 'status-msg error';
+    }
+    setTimeout(() => { st.textContent = ''; st.className = 'status-msg'; }, 3000);
     sel.removeAllRanges();
   }
 });
@@ -390,12 +1826,16 @@ $('keyGoSettings').addEventListener('click', () => {
   $('keyPopup').classList.remove('open');
   document.querySelector('details.settings').open = true;
   const miss = missingKeys(false);
-  if (miss[0]) { const el = keyInputFor(miss[0].key); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); }
+  if (miss[0]) { 
+    const el = keyInputFor(miss[0].key); 
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' }); 
+    el.focus(); 
+  }
 });
 
 // 设置联动
 $('artProvider').addEventListener('change', () => { populateArtModels(); syncKeyInputs(); saveSettings(); });
-$('provider').addEventListener('change', () => { syncKeyInputs(); saveSettings(); });
+$('provider').addEventListener('change', () => { populateImageModels(); syncKeyInputs(); saveSettings(); });
 $('artModel').addEventListener('change', saveSettings);
 $('imageModel').addEventListener('change', saveSettings);
 $('artKey').addEventListener('input', () => {
@@ -409,7 +1849,8 @@ $('imgKey').addEventListener('input', () => {
   saveSettings();
 });
 
-// 启动
+// 启动运行
+initTheme();
 loadSettings();
 loadKeyStatus();
 </script>

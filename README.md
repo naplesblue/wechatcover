@@ -105,7 +105,9 @@ node gen_cover.mjs --from-text examples/sample_bear_article.md --out covers/my-c
 node server.mjs        # 然后打开 http://localhost:8787
 ```
 
-- 粘贴 Markdown（第一行 `# 标题`）→ 选风格 / 出图后端 / 候选数 → 生成封面、预览、下载
+- 粘贴 Markdown（第一行 `# 标题`）→ 选风格 / 候选数（出图后端、模型、API Key 都在「设置」里）→「生成新封面」出图，可看大图、下载
+- **只出提示词**：只跑艺术指导、不出图，给出可复制的英文 image_prompt——拿去网页版 LLM 自己出图，省一个生图 key
+- **同提示词重出**：对某张封面用同一份提示词再出一张（不重跑艺术指导、更省），适合「创意满意但这张有瑕疵」
 - 顺手「导出微信排版 HTML」：把同一篇正文转成可直接粘进公众号编辑器的内联样式 HTML（markdown-it + juice，完整 markdown：表格 / 图片 / 嵌套列表 / 删除线）
 - 服务器是 Node 原生 http；出图走同一条 `gen_cover` 链路（含中文渲染质检）。出图无需依赖，**排版导出前先 `npm install` 一次**
 - 没配 key 时点「生成封面」会弹窗提醒（缺哪个提示哪个）。key 可在页面「设置」里填——即时生效、存本机浏览器、覆盖 `.env`
