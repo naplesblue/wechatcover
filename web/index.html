@@ -1484,30 +1484,14 @@ function artKeyName() { return $('artProvider').value === 'deepseek' ? 'DEEPSEEK
 function imgKeyName() { return $('provider').value === 'qwen' ? 'DASHSCOPE_API_KEY' : 'OPENAI_API_KEY'; }
 
 function populateArtModels(selected) {
-  const provider = $('artProvider').value;
-  const opts = [...(ART_MODELS[provider] || [])];
-  if (selected && !opts.includes(selected) && selected !== '__custom__') {
-    opts.push(selected);
-  }
-  opts.push('__custom__');
-  $('artModel').innerHTML = opts.map((m) => {
-    if (m === '__custom__') return `<option value="__custom__">自定义模型...</option>`;
-    return `<option value="${m}">${m}</option>`;
-  }).join('');
-  if (selected) $('artModel').value = selected;
+  const opts = ART_MODELS[$('artProvider').value] || [];
+  $('artModel').innerHTML = opts.map((m) => `<option value="${m}">${m}</option>`).join('');
+  if (selected && opts.includes(selected)) $('artModel').value = selected;
 }
 function populateImageModels(selected) {
-  const provider = $('provider').value;
-  const opts = [...(IMAGE_MODELS[provider] || [])];
-  if (selected && !opts.includes(selected) && selected !== '__custom__') {
-    opts.push(selected);
-  }
-  opts.push('__custom__');
-  $('imageModel').innerHTML = opts.map((m) => {
-    if (m === '__custom__') return `<option value="__custom__">自定义模型...</option>`;
-    return `<option value="${m}">${m}</option>`;
-  }).join('');
-  if (selected) $('imageModel').value = selected;
+  const opts = IMAGE_MODELS[$('provider').value] || [];
+  $('imageModel').innerHTML = opts.map((m) => `<option value="${m}">${m}</option>`).join('');
+  if (selected && opts.includes(selected)) $('imageModel').value = selected;
 }
 function syncKeyInputs() {
   const an = artKeyName(), inm = imgKeyName();
