@@ -17,11 +17,13 @@
  *     [--quality low|medium|high]                  # 默认 low（~¥0.02/张）
  *     [--size 1920x816|2400x1024]                  # 默认 1920x816
  *     [--preview]                                  # 只做艺术指导，打印 JSON，不出图
+ *     [--wireframe]                                # 出图前先生成 HTML 版式线框图确认构图，不出图
  *     [--force]                                    # 覆盖已存在输出
  *     [--model deepseek-v4-flash]                  # 艺术指导模型（也可 GEN_COVER_MODEL 环境变量）
  *     [--effort low|high|max]                      # 推理强度，默认 high（仅 deepseek 生效）
  *     [--variants N]                               # 一次出 N 个不同钩子/构图候选（默认 1）
  *                                                  # N>1 时输出 {out}-1.png … {out}-N.png
+ *     [--diverse-layouts]                          # N>1 时让各候选尽量用不同版式 pattern（默认按内容自动选）
  *     [--no-qa]                                    # 关闭中文标题渲染质检（默认开）
  *     [--qa-retries N]                             # 糊字时自动重出次数，默认 1
  *     [--provider openai|qwen]                     # 出图后端，默认 openai（也可 IMAGE_PROVIDER）
@@ -39,6 +41,7 @@ import { execSync } from 'node:child_process';
 import './lib/env.mjs';
 import { callLLM, safeParseJSON } from './lib/llm.mjs';
 import { verifyTitle } from './lib/qa.mjs';
+import { renderWireframe } from './lib/wireframe.mjs';
 
 const ROOT = import.meta.dirname;
 
@@ -49,6 +52,8 @@ function arg(name, def = null) {
 }
 
 const preview = args.includes('--preview');
+// --wireframe：做艺术指导 → 写 HTML 版式线框图（出图前确认构图），不出图
+const wireframe = args.includes('--wireframe');
 const force = args.includes('--force');
 // 默认省钱版（~¥0.02/张）；高清版传 --size 2400x1024 --quality medium
 const quality = arg('quality', 'low');
@@ -73,6 +78,8 @@ const qaEnabled = !args.includes('--no-qa');
 const qaRetries = (() => { const v = parseInt(arg('qa-retries', '1'), 10); return Number.isNaN(v) ? 1 : Math.max(0, v); })();
 // 出图后端：--provider openai|qwen（透传给 render.mjs；不传则 render 用默认/IMAGE_PROVIDER）
 const imageProvider = typeof arg('provider') === 'string' ? arg('provider') : null;
+// 多方案版式多样化：仅当 variants>1 时生效，让各候选尽量用不同 pattern（默认关 = 按内容自动选最优）
+const diverseLayouts = args.includes('--diverse-layouts');
 
 if (!fromTextPath) {
   console.error('[ERROR] --from-text 必填');
@@ -109,7 +116,7 @@ const cs = {
 const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
 const OUT_PATH = outOverride || path.join(ROOT, 'covers', `${fileSlug}-${timestamp}.png`);
 
-if (variants === 1 && fs.existsSync(OUT_PATH) && !force && !preview) {
+if (variants === 1 && fs.existsSync(OUT_PATH) && !force && !preview && !wireframe) {
   console.error(`[SKIP] 封面已存在: ${OUT_PATH}（--force 可覆盖）`);
   console.log(OUT_PATH);
   process.exit(0);
@@ -181,7 +188,17 @@ const candidateSchema = `{
   "visual_concept": "Step 2 的产出（≤80 字，中文描述）",
   "title_text": "封面显示的主标题（中文 6-10 字，是 hook 的视觉化版本）",
 ${subtitleJsonLine}
-  "image_prompt": "完整的英文 image prompt（按 art_director.md 模板填充，包含 SUBJECT / STYLE / LIGHTING / COMPOSITION / COLOR PALETTE / TEXT IN IMAGE / NEGATIVE 等段，长度 ~3500-5500 字符）"
+  "layout": {
+    "pattern": "Step 2.5 的版式名（左字右图 / 右字左图 / 字压图 / 上图下字 / 上字下图 之一）",
+    "focal_point": "视线第一落点，单格（如 C-M）",
+    "title": { "zone": "标题占区（如 L-T..L-B）", "align": "left|center|right", "weight": "dominant|secondary" },
+    "elements": [ { "what": "具名物体", "zone": "落区（如 C-T..C-B）", "role": "focal|support" } ],
+    "accent": { "what": "点睛色落点", "zone": "单格" },
+    "negative_space": "留白格（如 R-T）",
+    "density": "low|medium|high",
+    "reading_flow": "视线路径（如 L→C→R）"
+  },
+  "image_prompt": "完整的英文 image prompt（按 art_director.md 模板填充，COMPOSITION 段由 layout 翻译而来，包含 SUBJECT / STYLE / LIGHTING / COMPOSITION / COLOR PALETTE / TEXT IN IMAGE / NEGATIVE 等段，长度 ~3500-5500 字符）"
 }`;
 
 const outputSpec = variants === 1
@@ -190,7 +207,7 @@ const outputSpec = variants === 1
 
 const variantsNote = variants === 1
   ? ''
-  : `\n8. ${variants} 个候选必须是**真正不同的创意角度**（不同钩子、或同钩子下不同视觉切入），不要只是措辞微调`;
+  : `\n8. ${variants} 个候选必须是**真正不同的创意角度**（不同钩子、或同钩子下不同视觉切入），不要只是措辞微调${diverseLayouts ? `\n9. ${variants} 个候选请尽量采用**不同的版式 pattern**（从 playbook 里选不同项：左字右图 / 右字左图 / 字压图 / 上图下字 / 上字下图），便于横向对比构图` : ''}`;
 
 const userPrompt = `请为这篇文章设计封面：
 
@@ -204,69 +221,111 @@ ${cs.body || ''}
 
 关键要求：
 1. 钩子必须包含数字/反差/具体动作/人名之一；如文章有具体数字，优先用数字
-2. image_prompt 必须显式约束 CANVAS UNITY（画布是一个被设计的整体，没有飞地、没有死区）
+2. 必须先按 Step 2.5 给出 layout：从 playbook 选 pattern，标注各元素落格、留白格、密度；标题区与焦点不能抢同一格。image_prompt 的 COMPOSITION 段由 layout 翻译而来，体现 CANVAS UNITY（无飞地、无死区）
 3. image_prompt 必须显式列出色板占比（参照 brand_system.md 的色板表）
 4. image_prompt 必须显式禁止真品牌 logo、AI 视觉俗套、photorealism
 5. title_text 是封面上要渲染的中文文字
 6. ${subtitleNote}
 7. 只输出 JSON，不要 markdown 代码块标记，不要解释${characterExtra}${variantsNote}`;
 
-const maxTokens = Math.max(4000, 3500 * variants);
-console.error(`[INFO] 调用 ${ART_DIRECTOR_MODEL} 做艺术指导（thinking enabled, effort=${effort}${variants > 1 ? `, ${variants} 候选` : ''}）...`);
-let llmOutput;
-try {
-  llmOutput = await callLLM(systemPrompt, userPrompt, maxTokens, ART_DIRECTOR_MODEL, {
-    jsonMode: true,
-    thinking: 'enabled',
-    effort,
+// ── 版式坐标兜底校验：只挑客观硬错（非法坐标 / 缺核心结构字段），有错就让 LLM 重出 ──
+// 软问题（重叠、留白多少、pattern 选择）不管——那是设计取舍，人会自己跳过，代码不限制 LLM 思路。
+const COLS = ['L', 'C', 'R'], ROWS = ['T', 'M', 'B'];
+function cellValid(cell) {
+  if (typeof cell !== 'string') return false;
+  const [c, r] = cell.trim().split('-');
+  return COLS.includes(c) && ROWS.includes(r);
+}
+function zoneValid(zone) {
+  if (typeof zone !== 'string' || !zone.trim()) return false;
+  const parts = zone.split('..').map((s) => s.trim());
+  return parts.length >= 1 && parts.length <= 2 && parts.every(cellValid);
+}
+// 返回该候选 layout 的硬错清单（空数组 = 通过）。
+// 只查「渲染核心块」的坐标——标题区 + 各具名元素：它们坐标非法会让标题/焦点直接画不出来。
+// 不查 focal_point / accent / negative_space：前者只是元信息，后两者非法时只是少画一个小块（优雅降级），
+// 且 negative_space="none" 对满幅「字压图」是合理表达——硬卡会白白触发重出。
+function layoutErrors(c) {
+  const errs = [];
+  const L = c && c.layout;
+  if (!L || typeof L !== 'object') { errs.push('layout 缺失或非对象'); return errs; }
+  if (!L.title || !zoneValid(L.title.zone)) errs.push(`title.zone 非法坐标「${L.title && L.title.zone}」`);
+  (Array.isArray(L.elements) ? L.elements : []).forEach((el, i) => {
+    if (!zoneValid(el && el.zone)) errs.push(`elements[${i}].zone 非法坐标「${el && el.zone}」`);
   });
-} catch (err) {
-  console.error(`[FATAL] LLM 调用失败: ${err.message}`);
-  process.exit(1);
+  return errs;
 }
 
-if (!llmOutput || llmOutput.trim().length === 0) {
-  console.error('[FATAL] LLM 未返回内容');
-  process.exit(1);
-}
-
-let parsed;
-try {
-  parsed = safeParseJSON(llmOutput);
-  if (!parsed) throw new Error('safeParseJSON 返回 null');
-} catch (e) {
-  console.error(`[FATAL] LLM 输出非有效 JSON: ${e.message}`);
-  console.error(llmOutput.slice(0, 1200));
-  process.exit(1);
-}
-
-// 归一化为候选数组
+const maxTokens = Math.max(4000, 3500 * variants);
+const LAYOUT_MAX_RETRIES = 2;            // 版式坐标硬错最多重出次数
+const requiredFields = ['hook', 'visual_concept', 'title_text', 'image_prompt', 'layout'];
 let candidates;
-if (variants === 1) {
-  candidates = [parsed];
-} else {
-  candidates = Array.isArray(parsed) ? parsed : parsed.candidates;
-  if (!Array.isArray(candidates) || candidates.length === 0) {
-    console.error('[FATAL] LLM 未返回 candidates 数组');
-    console.error(JSON.stringify(parsed, null, 2).slice(0, 1200));
+let layoutFix = '';                      // 重出时追加的坐标纠正提示（仅修语法，不限创意）
+for (let attempt = 0; ; attempt++) {
+  console.error(`[INFO] 调用 ${ART_DIRECTOR_MODEL} 做艺术指导（thinking enabled, effort=${effort}${variants > 1 ? `, ${variants} 候选` : ''}${attempt > 0 ? `, 版式重出 ${attempt}/${LAYOUT_MAX_RETRIES}` : ''}）...`);
+  let llmOutput;
+  try {
+    llmOutput = await callLLM(systemPrompt, userPrompt + layoutFix, maxTokens, ART_DIRECTOR_MODEL, {
+      jsonMode: true,
+      thinking: 'enabled',
+      effort,
+    });
+  } catch (err) {
+    console.error(`[FATAL] LLM 调用失败: ${err.message}`);
     process.exit(1);
   }
-  if (candidates.length > variants) candidates = candidates.slice(0, variants);
-  if (candidates.length < variants) console.error(`[WARN] 只返回了 ${candidates.length}/${variants} 个候选`);
-}
+  if (!llmOutput || llmOutput.trim().length === 0) {
+    console.error('[FATAL] LLM 未返回内容');
+    process.exit(1);
+  }
 
-// 校验每个候选
-const requiredFields = ['hook', 'visual_concept', 'title_text', 'image_prompt'];
-for (const [i, c] of candidates.entries()) {
-  for (const f of requiredFields) {
-    if (!c[f]) {
-      console.error(`[FATAL] 候选 ${i + 1} 缺字段: ${f}`);
-      console.error(JSON.stringify(c, null, 2));
+  const parsed = safeParseJSON(llmOutput);
+  if (!parsed) {
+    if (attempt < LAYOUT_MAX_RETRIES) { console.error('[WARN] LLM 输出非有效 JSON，重出'); layoutFix = ''; continue; }
+    console.error('[FATAL] LLM 输出非有效 JSON');
+    console.error(llmOutput.slice(0, 1200));
+    process.exit(1);
+  }
+
+  // 归一化为候选数组
+  if (variants === 1) {
+    candidates = [parsed];
+  } else {
+    candidates = Array.isArray(parsed) ? parsed : parsed.candidates;
+    if (!Array.isArray(candidates) || candidates.length === 0) {
+      if (attempt < LAYOUT_MAX_RETRIES) { console.error('[WARN] LLM 未返回 candidates 数组，重出'); layoutFix = ''; continue; }
+      console.error('[FATAL] LLM 未返回 candidates 数组');
+      console.error(JSON.stringify(parsed, null, 2).slice(0, 1200));
       process.exit(1);
     }
+    if (candidates.length > variants) candidates = candidates.slice(0, variants);
+    if (candidates.length < variants) console.error(`[WARN] 只返回了 ${candidates.length}/${variants} 个候选`);
   }
-  if (typeof c.subtitle_text !== 'string') c.subtitle_text = finalSubtitle;
-  if (c.image_prompt.length < 1500) console.error(`[WARN] 候选 ${i + 1} image_prompt 仅 ${c.image_prompt.length} 字符，可能不完整`);
+
+  // 必填字段缺失 = 结构性问题，直接 fatal（不重试）
+  for (const [i, c] of candidates.entries()) {
+    for (const f of requiredFields) {
+      if (!c[f]) {
+        console.error(`[FATAL] 候选 ${i + 1} 缺字段: ${f}`);
+        console.error(JSON.stringify(c, null, 2));
+        process.exit(1);
+      }
+    }
+    if (typeof c.subtitle_text !== 'string') c.subtitle_text = finalSubtitle;
+    if (c.image_prompt.length < 1500) console.error(`[WARN] 候选 ${i + 1} image_prompt 仅 ${c.image_prompt.length} 字符，可能不完整`);
+  }
+
+  // 版式坐标兜底：有硬错就带着具体错误重出
+  const errsPerCand = candidates.map(layoutErrors);
+  const bad = errsPerCand.map((e, i) => (e.length ? i : -1)).filter((i) => i >= 0);
+  if (bad.length === 0) break;  // 全部通过
+  const detail = bad.map((i) => `候选 ${i + 1}（${errsPerCand[i].join('；')}）`).join('，');
+  if (attempt >= LAYOUT_MAX_RETRIES) {
+    console.error(`[WARN] 版式坐标仍有硬错（已重出 ${LAYOUT_MAX_RETRIES} 次），保留当前结果继续：${detail}`);
+    break;  // 优雅降级，不阻断
+  }
+  console.error(`[LAYOUT] 版式坐标硬错，重出（${attempt + 1}/${LAYOUT_MAX_RETRIES}）：${detail}`);
+  layoutFix = `\n\n【重要修正】上次 layout 含非法坐标（${detail}）。坐标只能是 列 L/C/R 与 行 T/M/B 的组合（单格如 C-M，区间如 L-T..R-B）；底部整行 = L-B..R-B，顶部整行 = L-T..R-T。请重新输出全部候选，确保每个 zone 和 focal_point 都是合法坐标。`;
 }
 
 // 每个候选的输出路径：单候选用原名，多候选加序号后缀
@@ -280,6 +339,7 @@ fs.mkdirSync(path.dirname(OUT_PATH), { recursive: true });
 
 const results = [];
 const metas = [];
+const wireframes = [];
 for (const [i, c] of candidates.entries()) {
   const outPath = variantPath(OUT_PATH, i);
   const metaPath = outPath.replace(/\.png$/i, '.meta.json');
@@ -290,9 +350,20 @@ for (const [i, c] of candidates.entries()) {
   console.error(`画面:      ${c.visual_concept}`);
   console.error(`主标题:    ${c.title_text}`);
   console.error(`副标题:    ${c.subtitle_text}`);
+  console.error(`版式:      ${c.layout?.pattern || '—'} · ${c.layout?.density || '—'} · 焦点 ${c.layout?.focal_point || '—'}`);
   console.error(`prompt:    ${c.image_prompt.length} 字符`);
 
   fs.writeFileSync(metaPath, JSON.stringify({ ...c, sourceSlug: cs.sourceSlug }, null, 2), 'utf-8');
+
+  if (wireframe) {
+    const htmlPath = outPath.replace(/\.png$/i, '.wireframe.html');
+    const promptPath = outPath.replace(/\.png$/i, '.prompt.txt');
+    fs.writeFileSync(htmlPath, renderWireframe(c), 'utf-8');
+    fs.writeFileSync(promptPath, c.image_prompt, 'utf-8');
+    wireframes.push({ htmlPath, promptPath, outPath });
+    console.error(`版式线框:  ${htmlPath}`);
+    continue;
+  }
 
   if (preview) continue;
 
@@ -329,6 +400,15 @@ for (const [i, c] of candidates.entries()) {
   }
 
   results.push(outPath);
+}
+
+if (wireframe) {
+  console.error(`\n[WIREFRAME] 已生成 ${wireframes.length} 张版式线框图（未出图）。确认构图后，用下面命令按锁定的提示词出图：`);
+  for (const w of wireframes) {
+    console.error(`  node render.mjs --prompt-file ${w.promptPath} --out ${w.outPath} --size ${size} --quality ${quality}${imageProvider ? ` --provider ${imageProvider}` : ''}`);
+  }
+  console.log(wireframes.map((w) => w.htmlPath).join('\n'));  // 输出 html 路径供调用方/打开
+  process.exit(0);
 }
 
 if (preview) {

@@ -221,14 +221,14 @@
   }
 
   /* 参数配置条 */
-  .style-options-grid { 
+  .style-options-grid {
     display: grid;
-    grid-template-columns: 1fr 120px;
+    grid-template-columns: 1fr 1.3fr;
     gap: 16px;
-    margin-bottom: 18px;
+    margin-bottom: 14px;
   }
   .style-options-grid .subtitle-field {
-    grid-column: span 2;
+    grid-column: auto;
   }
   .field { 
     display: flex; 
@@ -356,12 +356,12 @@
   }
 
   /* 按钮动作栏 */
-  .actions-panel { 
-    display: flex; 
-    gap: 12px; 
-    flex-wrap: wrap; 
-    align-items: center; 
-    margin-top: 6px; 
+  .actions-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
+    margin-top: 6px;
   }
   button { 
     background: var(--ink); 
@@ -614,7 +614,19 @@
   }
   .loader-step.success .step-bullet {
     background: #52B788;
+    color: transparent;
+    position: relative;
+  }
+  .loader-step.success .step-bullet::after {
+    content: '✓';
     color: #FFF;
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
   }
   .loader-step.success .step-text {
     color: var(--text-secondary);
@@ -788,7 +800,14 @@
   .status-msg {
     font-size: 11px;
     font-weight: 600;
-    transition: var(--transition);
+    opacity: 0;
+    transform: translateY(3px);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    display: inline-block;
+  }
+  .status-msg.show {
+    opacity: 1;
+    transform: translateY(0);
   }
   .status-msg.success { color: #52B788; }
   .status-msg.error { color: #E07A5F; }
@@ -1093,6 +1112,61 @@
     border-radius: 8px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
   }
+
+  /* 左栏分步标题 */
+  .step-title { font-size: 13px; font-weight: 700; color: var(--text-primary); margin: 20px 0 10px; display: flex; align-items: baseline; gap: 8px; }
+  .step-title:first-of-type { margin-top: 2px; }
+  .step-num { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: var(--ink); color: #fff; font-size: 12px; font-weight: 700; flex: 0 0 auto; align-self: center; }
+  .step-hint { font-size: 11px; font-weight: 400; color: var(--text-secondary); }
+
+  /* 出封面动作组（先看构图=主推荐 / 直接生成=次 / 只出提示词=旁路链接）*/
+  .cta-tag { font-size: 11px; font-weight: 700; background: rgba(255,255,255,.22); padding: 1px 8px; border-radius: 999px; margin-left: 4px; }
+  .cta-tertiary { background: transparent; border: none; box-shadow: none; color: var(--text-secondary); font-size: 12px; font-weight: 500; align-self: center; padding: 4px 8px; }
+  .cta-tertiary:hover:not(:disabled) { color: var(--text-primary); transform: none; box-shadow: none; filter: none; background: transparent; text-decoration: underline; }
+
+  /* header 工具按钮（微信排版）*/
+  .header-tool-btn { padding: 8px 14px; font-size: 13px; }
+
+  /* 右栏模式标签 */
+  .card-header-left { display: flex; align-items: center; gap: 10px; }
+  .mode-chip { font-size: 11px; font-weight: 600; color: var(--accent); background: var(--accent-glow); border: 1px solid var(--border-color); padding: 3px 10px; border-radius: 999px; }
+  .mode-chip:empty { display: none; }
+
+  /* 版式卡片「出 N 张」 */
+  .render-count { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-secondary); }
+  .render-count select { padding: 3px 6px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary); font-family: inherit; }
+
+  /* 版式线框预览（先确定构图，再出图）—— 用固定示意色，不随主题变 */
+  .wf-card {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    background: var(--bg-card, transparent);
+  }
+  .wf-card-header { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .wf-meta { font-size: 12px; color: var(--text-secondary); margin-bottom: 10px; }
+  .wf-grid { position: relative; aspect-ratio: 47/20; background: #FAF3DD; border: 1px solid #cbb89a; border-radius: 6px; overflow: hidden; }
+  .wf-bg, .wf-overlay { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(3,1fr); grid-template-rows: repeat(3,1fr); }
+  .wf-overlay { pointer-events: none; }
+  .wf-cell { border: 1px dashed #cbb89a; padding: 3px 5px; font-size: 10px; color: #c3b48f; }
+  .wf-zone { margin: 5px; border-radius: 7px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 6px; font-size: 12px; font-weight: 600; overflow: hidden; line-height: 1.25; }
+  .wf-tag { display: block; font-size: 10px; font-weight: 700; letter-spacing: .04em; opacity: .85; margin-bottom: 2px; }
+  .wf-zone.wf-title { background: rgba(27,73,101,.16); border: 2px solid #1B4965; color: #1B4965; }
+  .wf-zone.wf-title b { font-size: 17px; }
+  .wf-zone.wf-focal { background: rgba(42,157,143,.16); border: 2px solid #2A9D8F; color: #1f6b61; }
+  .wf-zone.wf-support { background: rgba(141,153,174,.18); border: 2px dashed #8D99AE; color: #5c6479; font-weight: 500; }
+  .wf-zone.wf-neg { background: repeating-linear-gradient(45deg,transparent,transparent 7px,rgba(203,184,154,.30) 7px,rgba(203,184,154,.30) 9px); border: 1px dashed #cbb89a; color: #a99a78; font-weight: 500; }
+  .wf-zone.wf-accent { background: transparent; border: none; justify-content: flex-end; align-items: flex-end; padding: 6px; }
+  .wf-zone.wf-accent .wf-dot { background: #E07A5F; color: #fff; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 999px; box-shadow: 0 2px 6px rgba(224,122,95,.5); }
+  .wf-legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 11px; color: var(--text-secondary); margin: 10px 0; }
+  .wf-legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .wf-sw { width: 13px; height: 13px; border-radius: 3px; display: inline-block; }
+  .wf-sw.wf-title { background: rgba(27,73,101,.16); border: 2px solid #1B4965; }
+  .wf-sw.wf-focal { background: rgba(42,157,143,.16); border: 2px solid #2A9D8F; }
+  .wf-sw.wf-support { background: rgba(141,153,174,.18); border: 2px dashed #8D99AE; }
+  .wf-sw.wf-accent-sw { background: #E07A5F; }
+  .wf-sw.wf-neg { background: repeating-linear-gradient(45deg,#efe7cf,#efe7cf 4px,#cbb89a 4px,#cbb89a 6px); }
 </style>
 </head>
 <body class="light-theme">
@@ -1110,6 +1184,10 @@
       </div>
     </div>
     <div class="header-actions">
+      <button class="btn-accent header-tool-btn" id="wechatBtn" title="把 Markdown 转成公众号排版 HTML">
+        <svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><line x1="9" x2="15" y1="9" y2="9"/><line x1="9" x2="15" y1="13" y2="13"/><line x1="9" x2="13" y1="17" y2="17"/></svg>
+        微信排版
+      </button>
       <button id="themeToggle" class="theme-toggle-btn" title="切换深/浅主题">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
       </button>
@@ -1130,11 +1208,12 @@
           <span class="badge">Workspace</span>
         </div>
 
-        <p class="field-label">粘贴文章（第一行为 <code># 标题</code>，出图自动提取核心段落）</p>
+        <div class="step-title"><span class="step-num">1</span>粘贴文章<span class="step-hint">第一行写 <code># 标题</code>，出图自动提取核心段落</span></div>
         <div class="textarea-container">
           <textarea id="md" placeholder="# 我的文章标题&#10;&#10;将文章正文粘贴到这里，AI 艺术指导模块会自动为您分析文章，提炼核心钩子与构图画面……"></textarea>
         </div>
 
+        <div class="step-title"><span class="step-num">2</span>风格与参数</div>
         <div class="style-options-grid">
           <div class="field">
             <label for="preset">风格艺术预设</label>
@@ -1145,16 +1224,6 @@
                 <option value="warm-orange">暖橘活泼</option>
                 <option value="dark-editorial">深色编辑风</option>
                 <option value="academic">学术纯排版</option>
-              </select>
-            </div>
-          </div>
-          <div class="field">
-            <label for="variants">候选张数</label>
-            <div class="select-wrapper">
-              <select id="variants">
-                <option value="1">1 张</option>
-                <option value="2">2 张</option>
-                <option value="3">3 张</option>
               </select>
             </div>
           </div>
@@ -1217,17 +1286,18 @@
           </div>
         </details>
 
-        <!-- 动作按钮面板 -->
+        <div class="step-title"><span class="step-num">3</span>出封面</div>
+        <!-- 动作按钮面板：先看构图=主推荐（先定版式，再出图）/ 直接生成=快速 / 只出提示词=旁路 -->
         <div class="actions-panel">
-          <button id="gen">
+          <button id="layoutBtn" title="先出几种构图线框，挑中再按此构图出图（推荐）">
+            <svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><path d="M3 9h18M9 21V9"/></svg>
+            先看构图<span class="cta-tag">推荐</span>
+          </button>
+          <button class="ghost" id="gen" title="跳过构图，直接出 1 张封面">
             <svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m12 3-1.912 5.886L4.202 10.8 10.088 12.7 12 18.588l1.912-5.886 5.886-1.912-5.886-1.912Z"/></svg>
-            生成新封面
+            直接生成封面
           </button>
-          <button class="ghost" id="promptBtn">只出提示词</button>
-          <button class="btn-accent" id="wechatBtn">
-            <svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><line x1="9" x2="15" y1="9" y2="9"/><line x1="9" x2="15" y1="13" y2="13"/><line x1="9" x2="13" y1="17" y2="17"/></svg>
-            微信排版工作台
-          </button>
+          <button class="cta-tertiary" id="promptBtn" title="只产出提示词，可拷到外部 AI 出图（无需生图 key）">只出提示词（无需生图 key）</button>
         </div>
       </div>
     </div>
@@ -1236,10 +1306,13 @@
     <div class="workspace-right">
       <div class="card preview-card">
         <div class="card-header">
-          <h3>
-            <svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-            画布展台
-          </h3>
+          <div class="card-header-left">
+            <h3>
+              <svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+              画布展台
+            </h3>
+            <span class="mode-chip" id="modeChip"></span>
+          </div>
           <div class="status-indicator" id="status"></div>
         </div>
 
@@ -1401,6 +1474,7 @@ const ART_MODELS = { deepseek: ['deepseek-v4-flash', 'deepseek-chat'], qwen: ['q
 const IMAGE_MODELS = { openai: ['gpt-image-2', 'gpt-image-1'], qwen: ['qwen-image-2.0-pro-2026-04-22', 'qwen-image-max'] };
 const KEY_LABEL = { OPENAI_API_KEY: 'OpenAI', DEEPSEEK_API_KEY: 'DeepSeek', DASHSCOPE_API_KEY: 'DashScope' };
 let lastCovers = [];
+let lastLayouts = [];  // 「先看构图」的方案（含锁定的 image_prompt），供「按此构图出图」复用
 
 // 中央 key 存储（按 key 名）；艺术指导/生图 的 key 输入框都映射到这里
 let keysStore = { OPENAI_API_KEY: '', DEEPSEEK_API_KEY: '', DASHSCOPE_API_KEY: '' };
@@ -1410,14 +1484,30 @@ function artKeyName() { return $('artProvider').value === 'deepseek' ? 'DEEPSEEK
 function imgKeyName() { return $('provider').value === 'qwen' ? 'DASHSCOPE_API_KEY' : 'OPENAI_API_KEY'; }
 
 function populateArtModels(selected) {
-  const opts = ART_MODELS[$('artProvider').value] || [];
-  $('artModel').innerHTML = opts.map((m) => `<option value="${m}">${m}</option>`).join('');
-  if (selected && opts.includes(selected)) $('artModel').value = selected;
+  const provider = $('artProvider').value;
+  const opts = [...(ART_MODELS[provider] || [])];
+  if (selected && !opts.includes(selected) && selected !== '__custom__') {
+    opts.push(selected);
+  }
+  opts.push('__custom__');
+  $('artModel').innerHTML = opts.map((m) => {
+    if (m === '__custom__') return `<option value="__custom__">自定义模型...</option>`;
+    return `<option value="${m}">${m}</option>`;
+  }).join('');
+  if (selected) $('artModel').value = selected;
 }
 function populateImageModels(selected) {
-  const opts = IMAGE_MODELS[$('provider').value] || [];
-  $('imageModel').innerHTML = opts.map((m) => `<option value="${m}">${m}</option>`).join('');
-  if (selected && opts.includes(selected)) $('imageModel').value = selected;
+  const provider = $('provider').value;
+  const opts = [...(IMAGE_MODELS[provider] || [])];
+  if (selected && !opts.includes(selected) && selected !== '__custom__') {
+    opts.push(selected);
+  }
+  opts.push('__custom__');
+  $('imageModel').innerHTML = opts.map((m) => {
+    if (m === '__custom__') return `<option value="__custom__">自定义模型...</option>`;
+    return `<option value="${m}">${m}</option>`;
+  }).join('');
+  if (selected) $('imageModel').value = selected;
 }
 function syncKeyInputs() {
   const an = artKeyName(), inm = imgKeyName();
@@ -1446,6 +1536,8 @@ function saveSettings() {
     imageModel: $('imageModel').value,
   }));
 }
+// 右栏画布展台的模式标签（构图预览 / 封面成图 / 提示词）
+function setMode(t) { const el = $('modeChip'); if (el) el.textContent = t || ''; }
 
 async function postJson(path, body) {
   const r = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -1481,9 +1573,11 @@ function renderCovers(covers) {
   wrap.innerHTML = '';
   if (covers.length === 0) {
     $('emptyState').classList.remove('hidden');
+    setMode('');
     return;
   }
   $('emptyState').classList.add('hidden');
+  setMode('封面成图');
   lastCovers = covers;
 
   covers.forEach((c, i) => {
@@ -1522,13 +1616,13 @@ function copyPlain(text, el) {
   navigator.clipboard.writeText(text)
     .then(() => { 
       el.textContent = '✓ 已复制'; 
-      el.className = 'status-msg success';
-      setTimeout(() => { el.textContent = ''; el.className = 'status-msg'; }, 2000); 
+      el.className = 'status-msg success show';
+      setTimeout(() => { el.classList.remove('show'); setTimeout(() => { el.textContent = ''; }, 200); }, 2000); 
     })
     .catch(() => { 
       el.textContent = '✗ 复制失败'; 
-      el.className = 'status-msg error';
-      setTimeout(() => { el.textContent = ''; el.className = 'status-msg'; }, 2000); 
+      el.className = 'status-msg error show';
+      setTimeout(() => { el.classList.remove('show'); setTimeout(() => { el.textContent = ''; }, 200); }, 2000); 
     });
 }
 
@@ -1537,10 +1631,12 @@ function renderPrompts(prompts) {
   wrap.innerHTML = '';
   if (prompts.length === 0) {
     $('emptyState').classList.remove('hidden');
+    setMode('');
     return;
   }
   $('emptyState').classList.add('hidden');
-  
+  setMode('提示词');
+
   prompts.forEach((p, i) => {
     const div = document.createElement('div');
     div.className = 'prompt-card';
@@ -1574,6 +1670,132 @@ function renderPrompts(prompts) {
     
     wrap.appendChild(div);
   });
+}
+
+// ── 版式线框预览（先确定构图，再出图）──
+function wfZoneToArea(zone) {
+  if (typeof zone !== 'string' || !zone) return null;
+  const cols = { L: 1, C: 2, R: 3 }, rows = { T: 1, M: 2, B: 3 };
+  const cell = (s) => { const [c, r] = s.trim().split('-'); return [rows[r], cols[c]]; };
+  const parts = zone.split('..').map((s) => s.trim());
+  const a = cell(parts[0]); const b = parts[1] ? cell(parts[1]) : a;
+  if (!a[0] || !a[1] || !b[0] || !b[1]) return null;
+  const r1 = Math.min(a[0], b[0]), r2 = Math.max(a[0], b[0]);
+  const c1 = Math.min(a[1], b[1]), c2 = Math.max(a[1], b[1]);
+  return `${r1} / ${c1} / ${r2 + 1} / ${c2 + 1}`;
+}
+function buildWireframe(c) {
+  const L = c.layout || {};
+  const blocks = [];
+  const add = (zone, cls, label) => { const area = wfZoneToArea(zone); if (!area) return; blocks.push(`<div class="wf-zone ${cls}" style="grid-area:${area}">${label}</div>`); };
+  add(L.negative_space, 'wf-neg', '<span class="wf-tag">留白</span>');
+  (L.elements || []).forEach((el) => { const f = el.role === 'focal'; add(el.zone, f ? 'wf-focal' : 'wf-support', `<span class="wf-tag">${f ? '焦点' : '辅助'}</span>${esc(el.what)}`); });
+  if (L.title && L.title.zone) add(L.title.zone, 'wf-title', `<span class="wf-tag">标题</span><b>${esc(c.title_text)}</b>`);
+  if (L.accent && L.accent.zone) add(L.accent.zone, 'wf-accent', `<span class="wf-dot">点睛${L.accent.what ? '·' + esc(L.accent.what) : ''}</span>`);
+  let cells = '';
+  for (const r of ['T', 'M', 'B']) for (const col of ['L', 'C', 'R']) cells += `<div class="wf-cell">${col}-${r}</div>`;
+  return `<div class="wf-grid"><div class="wf-bg">${cells}</div><div class="wf-overlay">${blocks.join('')}</div></div>`;
+}
+function renderWireframes(items) {
+  const wrap = $('prompts');
+  wrap.innerHTML = '';
+  $('covers').innerHTML = '';
+  if (!items.length) { $('emptyState').classList.remove('hidden'); setMode(''); return; }
+  $('emptyState').classList.add('hidden');
+  setMode('构图预览');
+  lastLayouts = items;
+  items.forEach((c, i) => {
+    const L = c.layout || {};
+    const meta = [L.pattern ? `版式：${esc(L.pattern)}` : '', L.density ? `密度：${esc(L.density)}` : '', L.reading_flow ? `视线：${esc(L.reading_flow)}` : '', c.hook ? `抓手：${esc(c.hook)}` : ''].filter(Boolean).join('　·　');
+    const div = document.createElement('div');
+    div.className = 'wf-card';
+    div.innerHTML = `
+      <div class="wf-card-header"><span class="prompt-index">方案 ${i + 1} 构图</span>${c.title_text ? `<span class="prompt-hook"><b>主标题：</b>${esc(c.title_text)}</span>` : ''}</div>
+      ${meta ? `<div class="wf-meta">${meta}</div>` : ''}
+      ${c.layout ? buildWireframe(c) : '<div class="wf-meta">该方案无版式信息（layout 缺失）</div>'}
+      <div class="wf-legend"><span><i class="wf-sw wf-title"></i>标题</span><span><i class="wf-sw wf-focal"></i>焦点</span><span><i class="wf-sw wf-support"></i>辅助</span><span><i class="wf-sw wf-accent-sw"></i>点睛</span><span><i class="wf-sw wf-neg"></i>留白</span></div>
+      <div class="prompt-card-actions">
+        <button class="btn-render-layout" data-index="${i}">按此构图出图</button>
+        <label class="render-count">出 <select class="render-n"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select> 张</label>
+        <span class="status-msg"></span>
+      </div>`;
+    wrap.appendChild(div);
+  });
+}
+async function renderFromLayout(index, btn) {
+  const c = lastLayouts[index];
+  if (!c || !c.image_prompt) { statusEl.textContent = '这个方案没有可用的提示词'; return; }
+  const imgKey = imgKeyName();
+  if (!keyReady(imgKey)) { showKeyPopup([{ role: '生图', key: imgKey }]); return; }
+  const actions = btn.closest('.prompt-card-actions');
+  const st = actions ? actions.querySelector('.status-msg') : null;
+  const n = Math.max(1, Math.min(3, parseInt(actions?.querySelector('.render-n')?.value, 10) || 1));
+  btn.disabled = true;
+  const covers = [];
+  try {
+    for (let k = 0; k < n; k++) {
+      const label = n > 1 ? `按构图出图 (${k + 1}/${n})…` : '按构图出图中…';
+      if (st) st.textContent = label;
+      statusEl.textContent = label;
+      const data = await postJson('/render', {
+        image_prompt: c.image_prompt,
+        provider: $('provider').value,
+        imageModel: $('imageModel').value,
+        keys: { ...keysStore },
+      });
+      covers.push({ url: data.url, file: data.file, hook: c.hook, visual_concept: c.visual_concept, title_text: c.title_text, image_prompt: c.image_prompt });
+    }
+    renderCovers(covers);
+    $('prompts').innerHTML = '';
+    statusEl.textContent = `已按构图出 ${covers.length} 张`;
+  } catch (err) {
+    if (st) st.textContent = '失败';
+    statusEl.textContent = '出图失败：' + err.message;
+    if (covers.length) renderCovers(covers);
+  } finally {
+    btn.disabled = false;
+  }
+}
+async function previewLayout() {
+  const markdown = $('md').value;
+  if (!markdown.trim()) { statusEl.textContent = '请先粘贴文章内容'; return; }
+  const miss = missingKeys(true);  // 只看构图：仅需艺术指导 key，不出图
+  if (miss.length) { showKeyPopup(miss); return; }
+  const btn = $('layoutBtn');
+  btn.disabled = true;
+  saveSettings();
+  statusEl.textContent = '正在规划构图…';
+  $('prompts').innerHTML = '';
+  $('covers').innerHTML = '';
+  startStepLoader(true);
+  try {
+    const data = await postJson('/generate', {
+      markdown,
+      preset: $('preset').value,
+      subtitle: $('subtitle').value,
+      variants: 3,            // 先看构图：固定探索 3 种版式
+      provider: $('provider').value,
+      model: $('artModel').value,
+      imageModel: $('imageModel').value,
+      keys: { ...keysStore },
+      diverseLayouts: true,   // 探索阶段恒为多样，便于横向对比构图
+      previewOnly: true,
+    });
+    stopStepLoader();
+    statusEl.textContent = `规划 ${data.prompts.length} 个构图`;
+    renderWireframes(data.prompts);
+  } catch (e) {
+    stopStepLoader();
+    statusEl.textContent = '构图规划失败';
+    $('emptyState').classList.remove('hidden');
+    const errDiv = document.createElement('div');
+    errDiv.className = 'covers-empty';
+    errDiv.style.cssText = 'color:#E07A5F;border:1px solid var(--border-color);padding:30px;border-radius:12px;text-align:center;font-size:13px';
+    errDiv.innerHTML = `⚠️ <b>出错信息：</b>${esc(e.message)}`;
+    $('covers').appendChild(errDiv);
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 // ── 流式步骤加载管理 ──
@@ -1646,7 +1868,7 @@ async function generate(previewOnly) {
       markdown,
       preset: $('preset').value,
       subtitle: $('subtitle').value,
-      variants: parseInt($('variants').value, 10),
+      variants: 1,            // 直接生成/只出提示词：1 个（要多版式走「先看构图」）
       provider: $('provider').value,
       model: $('artModel').value,
       imageModel: $('imageModel').value,
@@ -1735,7 +1957,12 @@ function toggleTheme() {
 
 // ── 事件绑定 ──
 $('gen').addEventListener('click', () => generate(false));
+$('layoutBtn').addEventListener('click', previewLayout);
 $('promptBtn').addEventListener('click', () => generate(true));
+$('prompts').addEventListener('click', (e) => {
+  const b = e.target.closest('.btn-render-layout');
+  if (b) { e.preventDefault(); renderFromLayout(parseInt(b.dataset.index, 10), b); }
+});
 $('wechatBtn').addEventListener('click', openWechat);
 $('wechatClose').addEventListener('click', closeWechat);
 $('wechatSrc').addEventListener('input', scheduleRender);
@@ -1801,8 +2028,8 @@ $('copyHtml').addEventListener('click', async () => {
       'text/plain': new Blob([lastHtml], { type: 'text/plain' }),
     })]);
     st.textContent = '✓ 已成功复制到剪贴板，可直接粘入微信编辑器';
-    st.className = 'status-msg success';
-    setTimeout(() => { st.textContent = ''; st.className = 'status-msg'; }, 3000);
+    st.className = 'status-msg success show';
+    setTimeout(() => { st.classList.remove('show'); setTimeout(() => { st.textContent = ''; }, 200); }, 3000);
   } catch {
     const r = document.createRange();
     r.selectNodeContents($('wechatPreview'));
@@ -1810,12 +2037,12 @@ $('copyHtml').addEventListener('click', async () => {
     try { 
       document.execCommand('copy'); 
       st.textContent = '✓ 已复制'; 
-      st.className = 'status-msg success';
+      st.className = 'status-msg success show';
     } catch { 
       st.textContent = '✗ 复制失败，请手动选中预览内容进行复制'; 
-      st.className = 'status-msg error';
+      st.className = 'status-msg error show';
     }
-    setTimeout(() => { st.textContent = ''; st.className = 'status-msg'; }, 3000);
+    setTimeout(() => { st.classList.remove('show'); setTimeout(() => { st.textContent = ''; }, 200); }, 3000);
     sel.removeAllRanges();
   }
 });

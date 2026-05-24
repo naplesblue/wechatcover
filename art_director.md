@@ -62,6 +62,49 @@
 
 ---
 
+## Step 2.5 — 定版式（layout）
+
+**画面定了「画什么」，版式定「摆哪」。** 这一步把构图从图像模型的即兴里收回来，变成一个可审阅的设计决策——它是出图质量的底限。
+
+### 网格
+
+3 列（`L`/`C`/`R`）× 3 行（`T`/`M`/`B`）的三分网格，铺在 47:20 横幅上。
+- 单格记作 `C-M`（中列中行）。
+- 矩形区记作 `左上格..右下格`，如 `L-T..C-B` = 左、中两列的全部三行。
+- **焦点优先落在三分交点**，非内容必要不放正中（正中是最无聊的位置）。
+
+### 版式 playbook（必须选一个，不要自创）
+
+横幅构图就这几种稳的，按内容选：
+
+| pattern | 标题位置 | 焦点物 | 何时用 |
+|---|---|---|---|
+| **左字右图** | 左 1/3（`L-T..L-B`） | 中右 | 默认最稳，标题与图不抢位 |
+| **右字左图** | 右 1/3（`R-T..R-B`） | 左中 | 焦点物本身朝左 / 向左运动时 |
+| **字压图** | 跨中部、压在场景低对比区上 | 满幅 | 场景有大片可安全放字的安静区域 |
+| **上图下字** | 底部整条 | 上方整条 | 焦点物很宽、横向铺开时 |
+| **上字下图** | 顶部整条 | 下方整条 | 标题要先声夺人时 |
+
+### 信息密度（density）
+
+| 档 | 具名物体数 | 留白 | 映射 |
+|---|---|---|---|
+| `low` | 1–2 | ≥40% | 大字封面、单一主体（如产品发布） |
+| `medium` | 3–4 | ~30% | 对比 / 动作类（行业观察、技术深度）— **默认** |
+| `high` | 5+ | <20% | 信息图式，仅特定 preset 启用；编辑插画默认不用 |
+
+### 留白是被「放置」的元素
+
+`negative_space` **必须指定至少一格**——它是有意的呼吸区，不是被遗忘的空白，通常也是主导色铺满、承载调性的那片区域（呼应「主导面 ≥50%」）。
+
+### 版式自检
+
+- 标题区（`title.zone`）和焦点（`focal_point`）**不能抢同一格**
+- 9 个格子，每格要么被某元素占用、要么是 `negative_space`——**不允许「未指派」的空格**（这就是 CANVAS UNITY 的可测量版本）
+- `reading_flow` 把焦点、标题、辅助元素串成一条视线路径（横幅默认 左→右）
+
+---
+
 ## Step 3 — 写完整 image prompt
 
 输出 JSON：
@@ -72,7 +115,17 @@
   "visual_concept": "Step 2 的产出，中文",
   "title_text": "封面显示的主标题（中文 6-10 字，是 hook 的视觉化版本）",
   "subtitle_text": "可选副标题（默认空；需要带网址/日期时填，如 yourdomain.com · 2026.05.21）",
-  "image_prompt": "完整英文 image prompt（使用下面的模板）"
+  "layout": {
+    "pattern": "Step 2.5 选的版式名（左字右图 / 右字左图 / 字压图 / 上图下字 / 上字下图 之一）",
+    "focal_point": "视线第一落点，单格（如 C-M）",
+    "title": { "zone": "标题占区（如 L-T..L-B）", "align": "left|center|right", "weight": "dominant|secondary" },
+    "elements": [ { "what": "具名物体（中文）", "zone": "落区（如 C-T..C-B）", "role": "focal|support" } ],
+    "accent": { "what": "点睛色落在哪个物体/部位", "zone": "单格" },
+    "negative_space": "留白格（如 R-T）",
+    "density": "low|medium|high",
+    "reading_flow": "视线路径（如 L→C→R）"
+  },
+  "image_prompt": "完整英文 image prompt（使用下面的模板，COMPOSITION 段由 layout 翻译而来）"
 }
 ```
 
@@ -103,42 +156,40 @@ LIGHTING & MOOD:
 - {soft / dramatic / clinical / warm} — but expressed through flat illustration
 - NOT cinematic lighting, NOT realistic shadows
 
-COMPOSITION (the one principle: CANVAS UNITY):
+COMPOSITION (derive from the layout field — translate it, do not improvise):
 - 2.35:1 horizontal aspect ratio = 47:20 (1920×816 default; 2400×1024 if high-res)
+- The layout field already decided WHERE everything goes on a 3×3 thirds grid.
+  Translate each placement into concrete spatial language the renderer understands.
+  Cell-to-prose mapping (apply the same logic to whatever cells layout uses):
+    L-T..L-B → "occupies the left third, vertically centered"
+    C-M      → "at the center, slightly above the midline"
+    R-M..R-B → "in the lower-right region"
+    R-T      → "the upper-right area, kept as calm intentional negative space"
+- State the chosen pattern in words (e.g. title in the left third, focal subject
+  center-right), place each element in its zone, and name the negative-space
+  region explicitly.
 
-**THE WHOLE CANVAS IS ONE DESIGNED OBJECT.** Every region of the canvas has
-intentional purpose — either intentional content, or intentional negative space
-that serves the design (not accidentally empty). There must be NO disconnected
-islands: no floating title, no isolated character, no forgotten corner.
+**THE WHOLE CANVAS IS ONE DESIGNED OBJECT.** Every cell of the grid is either
+intentional content or intentional negative space — never accidentally empty.
+The reading flow (e.g. left→center→right) connects focal point, title and
+supporting elements into a single path. NO disconnected islands: no floating
+title, no isolated character, no forgotten corner.
 
-The viewer should read the canvas as a single unified composition, not as
-multiple stacked elements or compartments.
-
-HOW to achieve canvas unity is open — depends on the content. Possibilities
-include (but are NOT limited to): structured layouts, scenes with visual
-bridges between elements, framing devices, integrated typography-as-image,
-spatial flow from one element to another, etc. Choose whatever serves THIS
-specific article best. Don't pattern-match to a fixed playbook — invent the
-implementation that fits.
+The freedom to invent is at the SUBJECT / concept level (what to draw, what
+metaphor). The LAYOUT is NOT free-form — it follows the chosen playbook pattern.
 
 Diagnostic questions to ask before finalizing:
-- Is there any part of the canvas that feels accidentally empty (versus
-  intentionally designed as breathing space)?
+- Does every grid cell have a purpose (content, or designated negative space)?
 - Is the title text visually connected to the rest of the illustration, or
   floating in isolation?
-- Could any single element be removed without affecting the rest? If yes,
-  that element is an island — fix or remove it.
-- Does the whole canvas read as one frame, or does it feel like multiple
-  separate frames pasted together?
-- If I imagine cropping the image into thirds, does each third feel meaningful,
-  or does one third feel "dead"?
+- Does the whole canvas read as one frame following the reading flow, or does it
+  feel like multiple separate frames pasted together?
 
-Universal failure modes (avoid these regardless of implementation):
+Universal failure modes (avoid these regardless of pattern):
 - Title and main subject treated as separate compartments with no visual link
 - Elements clustered on one side, the other side dead/forgotten
 - A small element floating alone with no anchoring to anything else
 - Subjects that look pasted onto the background instead of belonging to the scene
-- A "dead middle" between two side-zones
 
 COLOR PALETTE (strict, with area proportions):
 Use the EXACT palette defined in the brand system (品牌视觉系统) above. Copy its
@@ -207,10 +258,13 @@ CHARACTER 段：
 - [ ] **整张画布是一个被设计的整体**（不是几个独立元素拼装）
 - [ ] **没有「飞地」**：标题、主体、辅助元素彼此视觉相连，没有孤岛
 - [ ] **没有「死区」**：每个角落要么是有意的内容，要么是有意的呼吸空间，不是被遗忘的空白
+- [ ] **layout 已从 playbook 选定 pattern**（不是自创构图）
+- [ ] **标题区与焦点不抢同一格；9 格无「未指派」空格；negative_space 已指定**
+- [ ] **density 与内容类型匹配**（编辑插画默认 medium，不要 high）
 - [ ] image_prompt 显式列出色板（带 hex）
 - [ ] image_prompt 显式列出 NEGATIVE 黑名单
 - [ ] image_prompt 含工艺质感关键词（hand-illustrated, matte 等）
-- [ ] image_prompt 显式约束 LEFT-RIGHT BALANCE
+- [ ] image_prompt 的 COMPOSITION 段由 layout 翻译而来（含具体落位 + 留白区）
 - [ ] title_text 是 6-10 个中文字符
 - [ ] subtitle_text 符合调用方要求（默认空，或指定的网址/日期格式）
 
@@ -239,6 +293,19 @@ CHARACTER 段：
   "visual_concept": "一个人用手机对着电脑屏幕上的 AI 生成图片截图，放大镜下显示蓝色波浪纹理水印，旁边散落被撕碎的 C2PA 元数据标签",
   "title_text": "截图可查来源",
   "subtitle_text": "",
+  "layout": {
+    "pattern": "左字右图",
+    "focal_point": "C-M",
+    "title": { "zone": "L-T..L-B", "align": "left", "weight": "dominant" },
+    "elements": [
+      { "what": "笔记本屏幕 + 放大镜下的蓝色水印", "zone": "C-T..C-B", "role": "focal" },
+      { "what": "散落的撕碎 C2PA 标签", "zone": "R-M..R-B", "role": "support" }
+    ],
+    "accent": { "what": "放大镜手柄", "zone": "C-B" },
+    "negative_space": "R-T",
+    "density": "medium",
+    "reading_flow": "L→C→R"
+  },
   "image_prompt": "...（完整英文 prompt，~3800 字符，覆盖 SUBJECT / STYLE / LIGHTING / COMPOSITION / COLOR PALETTE / TEXT / NEGATIVE，完整版见对应输出的 .meta.json）"
 }
 ```
@@ -247,6 +314,7 @@ CHARACTER 段：
 
 1. **钩子降级路径**：没数字时，「截图也能追溯AI来源」用了具体动作（截图、追溯）+ 反差（截图本该破坏溯源，现在反而是溯源），符合 art_director.md 的钩子降级规则
 2. **画面承载文章核心论点**：「水印保留」vs「C2PA 元数据被撕碎」的视觉对比，直接演示了文章的中心观点（两种验证方式互补 / 一种更耐用）
-3. **画布统一性**：人物 + 笔记本 + 放大镜 + 散落标签 + 标题 = 一个完整场景的不同部分，没有飞地
-4. **色板比例**：暖纸 ≥50% 主导，蓝色用在水印线条 + 放大镜 + 标题上（精确签名），砖橘只用在放大镜手柄一处
-5. **没有真品牌 logo**：DeepSeek 主动避开了 OpenAI logo，渲染时也没出现真实商标
+3. **版式可审阅**：layout 选了「左字右图」——标题占左 1/3、焦点（水印放大镜）在中列、撕碎标签在右下、右上留白、medium 密度、L→C→R 视线。出图前就能看到这份构图，COMPOSITION 段由它翻译而来，不是模型即兴
+4. **画布统一性**：人物 + 笔记本 + 放大镜 + 散落标签 + 标题 = 一个完整场景的不同部分，没有飞地、没有未指派的空格
+5. **色板比例**：暖纸 ≥50% 主导，蓝色用在水印线条 + 放大镜 + 标题上（精确签名），砖橘只用在放大镜手柄一处
+6. **没有真品牌 logo**：DeepSeek 主动避开了 OpenAI logo，渲染时也没出现真实商标

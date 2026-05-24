@@ -51,7 +51,7 @@ function brandSystemPath(preset) {
 
 // 跑 gen_cover.mjs，返回生成的图片绝对路径数组
 // env: 页面填的 key/模型 env 注入（覆盖 .env；仅传 spawn 的 env，不进命令行，不落日志）
-function runGenCover({ mdFile, preset, withCharacter, subtitle, variants, outBase, provider, artModel, env, previewOnly }) {
+function runGenCover({ mdFile, preset, withCharacter, subtitle, variants, outBase, provider, artModel, env, previewOnly, diverseLayouts }) {
   return new Promise((resolve, reject) => {
     const a = ['gen_cover.mjs', '--from-text', mdFile, '--out', outBase, '--brand-system', brandSystemPath(preset), '--force'];
     if (withCharacter) a.push('--with-character');
@@ -59,6 +59,7 @@ function runGenCover({ mdFile, preset, withCharacter, subtitle, variants, outBas
     if (variants > 1) a.push('--variants', String(variants));
     if (provider) a.push('--provider', provider);
     if (artModel) a.push('--model', artModel);
+    if (diverseLayouts) a.push('--diverse-layouts');  // 多方案时各候选尽量用不同版式
     if (previewOnly) a.push('--preview');  // 只出提示词、不调生图
     const ps = spawn('node', a, { cwd: ROOT, env: { ...process.env, ...(env || {}) } });
     let out = '', err = '';
@@ -144,14 +145,14 @@ const server = http.createServer(async (req, res) => {
       fs.writeFileSync(mdFile, markdown, 'utf-8');
       const outBase = path.join(WEB_DIR, `${ts}.png`);
       const v = Math.max(1, Math.min(4, parseInt(variants, 10) || 1));
-      const paths = await runGenCover({ mdFile, preset, withCharacter: !!withCharacter, subtitle, variants: v, outBase, provider, artModel, env, previewOnly });
+      const paths = await runGenCover({ mdFile, preset, withCharacter: !!withCharacter, subtitle, variants: v, outBase, provider, artModel, env, previewOnly, diverseLayouts: !!body.diverseLayouts });
 
       // 只出提示词：paths 是 meta 文件路径，读出 prompt 返回（不出图）
       if (previewOnly) {
         const prompts = paths.map((mp) => {
           let m = {};
           try { m = JSON.parse(fs.readFileSync(mp, 'utf-8')); } catch {}
-          return { hook: m.hook || '', visual_concept: m.visual_concept || '', title_text: m.title_text || '', subtitle_text: m.subtitle_text || '', image_prompt: m.image_prompt || '' };
+          return { hook: m.hook || '', visual_concept: m.visual_concept || '', title_text: m.title_text || '', subtitle_text: m.subtitle_text || '', image_prompt: m.image_prompt || '', layout: m.layout || null };
         });
         return sendJson(res, 200, { prompts });
       }

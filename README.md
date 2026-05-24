@@ -93,6 +93,7 @@ node gen_cover.mjs --from-text examples/sample_bear_article.md --out covers/my-c
 # 带 IP 角色：       --with-character
 # 换风格预设：       --brand-system presets/dark-editorial.md
 # 先看艺术指导不出图：--preview
+# 出图前先看构图线框：--wireframe
 ```
 
 跑完会输出图片路径，并在旁边存一份 `.meta.json`（完整的钩子 / 画面构想 / image_prompt 记录，方便复盘和微调）。
@@ -105,13 +106,15 @@ node gen_cover.mjs --from-text examples/sample_bear_article.md --out covers/my-c
 node server.mjs        # 然后打开 http://localhost:8787
 ```
 
-- 粘贴 Markdown（第一行 `# 标题`）→ 选风格 / 候选数（出图后端、模型、API Key 都在「设置」里）→「生成新封面」出图，可看大图、下载
-- **只出提示词**：只跑艺术指导、不出图，给出可复制的英文 image_prompt——拿去网页版 LLM 自己出图，省一个生图 key
+- 粘贴 Markdown（第一行 `# 标题`）→ 选风格（出图后端、模型、API Key 都在「设置」里）→ 出封面。三个入口：
+  - **先看构图（推荐）**：先只跑艺术指导，列出 3 种不同版式的**构图线框**（标题 / 焦点 / 辅助 / 点睛 / 留白 分区，不花出图钱）；挑中一个点「按此构图出图」按这份锁定的构图出图，还能选「出 N 张」连出变体——**先定版式、再出图**
+  - **直接生成封面**：跳过构图，直接出 1 张
+  - **只出提示词**：只跑艺术指导、不出图，给出可复制的英文 image_prompt——拿去网页版 LLM 自己出图，省一个生图 key
 - **同提示词重出**：对某张封面用同一份提示词再出一张（不重跑艺术指导、更省），适合「创意满意但这张有瑕疵」
-- 顺手「导出微信排版 HTML」：把同一篇正文转成可直接粘进公众号编辑器的内联样式 HTML（markdown-it + juice，完整 markdown：表格 / 图片 / 嵌套列表 / 删除线）
-- 服务器是 Node 原生 http；出图走同一条 `gen_cover` 链路（含中文渲染质检）。出图无需依赖，**排版导出前先 `npm install` 一次**
-- 没配 key 时点「生成封面」会弹窗提醒（缺哪个提示哪个）。key 可在页面「设置」里填——即时生效、存本机浏览器、覆盖 `.env`
-- ⚠️ **`.env` 只在 server 启动时读一次**：改了 `.env` 里的 key 要**重启 server** 才生效（或直接用页面「设置」填 key，免重启）
+- 顺手「微信排版」（右上角）：把同一篇正文转成可直接粘进公众号编辑器的内联样式 HTML（markdown-it + juice，完整 markdown：表格 / 图片 / 嵌套列表 / 删除线）
+- 服务器是 Node 原生 http；出图走同一条 `gen_cover` 链路（含中文渲染质检 + 版式坐标兜底）。出图无需依赖，**排版导出前先 `npm install` 一次**
+- 没配 key 时点出图会弹窗提醒（缺哪个提示哪个）。key 可在页面「设置」里填——即时生效、存本机浏览器、覆盖 `.env`
+- ⚠️ **`.env` 只在 server 启动时读一次**：改了 `.env` 里的 key 要**重启 server** 才生效（或直接用页面「设置」填 key，免重启）。同理改了 `server.mjs` / `lib/` 也要重启（改 `index.html`、`gen_cover.mjs` 不用——前者每次请求重读、后者每次新起子进程）
 - Web UI **不含 IP 角色**——它是进阶玩法，走命令行 `--with-character`（见下方「IP 角色（进阶）」）
 
 ## CLI 参数
@@ -127,10 +130,12 @@ node server.mjs        # 然后打开 http://localhost:8787
 | `--size 1920x816\|2400x1024` | `1920x816` | 尺寸（均为公众号首图 47:20）|
 | `--provider openai\|qwen` | `openai` | 出图后端（也可 `IMAGE_PROVIDER`）。`qwen`=通义千问 Qwen-Image（中文渲染强），需 `DASHSCOPE_API_KEY`（国内可支付宝充值）|
 | `--variants N` | `1` | 一次出 N 个不同钩子/构图候选（输出 `-1.png … -N.png`）|
+| `--diverse-layouts` | 关 | 配合 `--variants N`（N>1）：让各候选尽量用不同版式 pattern，便于横向对比构图 |
 | `--model <id>` | `deepseek-v4-flash` | 艺术指导模型（也可用 `GEN_COVER_MODEL` 环境变量）|
 | `--effort low\|high\|max` | `high` | 推理强度（仅 deepseek 生效，映射为 `reasoning_effort`）|
 | `--no-qa` / `--qa-retries N` | QA 开 / `1` | 中文标题渲染质检（默认开，糊字自动重出）|
 | `--preview` | 关 | 只做艺术指导、打印 JSON，不调出图 API |
+| `--wireframe` | 关 | 出图前先生成 HTML 版式线框图（`{out}.wireframe.html`）确认构图，不出图；同时写出锁定提示词 `{out}.prompt.txt` 供随后出图 |
 | `--force` | 关 | 覆盖已存在的输出文件 |
 
 ## 做你自己的品牌
@@ -168,19 +173,21 @@ IP 角色是命令行进阶功能，**Web UI 不提供**（避免新用户误触
 
 - **数字钩子优先**：封面是 1.5 秒注视产品。文章里有具体数字（金额、百分比、量级）时，数字钩子优先级最高——别用「概念性钩子」替代。
 - **画布统一性 > 局部均衡**：横图不是「左中右三段平衡」，是「整张画布作为一个被设计的整体」。没有飞地（floating island），没有死区（forgotten corner）。
+- **版式先行（先定构图再出图）**：把「东西摆哪」从图像模型的即兴里收回来——先在 3×3 三分网格上定 `layout`（标题区 / 焦点 / 辅助 / 点睛 / 留白 + 视线流，从 5 种版式 playbook 里选），再据此翻译出 prompt 的 COMPOSITION 段。Web UI 的「先看构图」能在出图前肉眼审版式（详见 `art_director.md` Step 2.5）。
 - **设计原则 > 具体路径**：约束停在原则层。给 LLM 原则它会找到合适的实现路径；给 LLM 模板它会退化为复制。
 - **反 AI 视觉俗套黑名单**：显式禁止抽象神经网络、发光的脑子、机器手握人手、电路板背景、二进制雨、镜面塑料光泽……这些是 GPT-Image-2 默认会吐的「AI 出图模板」，必须强制禁用。
 
 ## 工作原理
 
 ```
-文章 → DeepSeek 艺术指导（三步法：找钩子 → 设计画面 → 写 prompt）→ image_prompt
+文章 → DeepSeek 艺术指导（找钩子 → 设计画面 → 定版式 → 写 prompt）→ layout + image_prompt
      → GPT-Image-2 单次渲染（含中文标题）→ 封面 PNG + meta.json
 ```
 
-两个踩过的坑（已固化进流程）：
+三个踩过的坑（已固化进流程）：
 - **中文文字单次渲染**：不做「base 图 + 文字 overlay」双层 pipeline，直接在 prompt 里指定中文标题。GPT-Image-2 实测对长 prompt（1000+ 字符）和中文标题渲染稳定。
 - **不写真品牌名**：真实公司名 / 商标 / 出版物 / 艺术家名会触发 OpenAI 安全审核，或渲染出真实 logo（公众号发布有商标风险）。一律用 generic 描述（`a major tech company's display`）。
+- **版式坐标兜底**：LLM 偶尔写出非法网格坐标（会让标题/焦点直接画不出来）。代码会校验渲染核心区（标题区 + 各元素）的坐标，带着具体错误让 LLM 重出（最多 2 次），仍不过则优雅降级——所以「先看构图」看到的线框基本不会缺块。
 
 ## 成本
 
