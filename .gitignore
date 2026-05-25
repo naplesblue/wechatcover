@@ -13,6 +13,9 @@ covers/
 ROADMAP.md
 article-draft.md
 
+# 本地测试素材 / 草稿 / 探针配置（不发布）—— 测试用的文章、临时 brand_system 都放这
+local/
+
 # 本地工具配置
 .claude/settings.local.json
 

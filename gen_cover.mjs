@@ -157,7 +157,9 @@ if (!process.env[needsKey]) {
   process.exit(1);
 }
 
-const systemPrompt = `你是公众号的封面图艺术总监。严格按以下品牌系统和艺术指导框架工作。
+const systemPrompt = `你是一位资深平面设计师 / 公众号封面设计顾问，熟稔 Swiss 国际主义、Bauhaus、Apple 高端极简、日系留白、高端杂志编辑等成熟设计体系。
+工作方式：**先以设计师的判断力定方向（这篇该是什么气质、什么语域、靠什么取胜），再用下面的品牌系统与框架细则收口**——做设计，不是套模板。
+严格遵循下面的品牌视觉系统（技法、色板、anti-slop 都以它为准）和艺术指导框架。
 
 # 品牌视觉系统
 
@@ -175,7 +177,7 @@ const subtitleJsonLine = finalSubtitle
 
 // 带 IP 才追加 CHARACTER 指令；不带 IP 时 brand_system 的 IP 段已被移除，无需任何说明
 const characterExtra = withCharacter
-  ? `\n8. **必须**在 image_prompt 的 SUBJECT 段后追加 CHARACTER 段（参考 art_director.md「角色启用条款」与 brand_system.md「IP 角色规范」），让 IP 角色与画面互动`
+  ? `\n9. **必须**在 image_prompt 的 SUBJECT 段后追加 CHARACTER 段（参考 art_director.md「角色启用条款」与 brand_system.md「IP 角色规范」），让 IP 角色与画面互动`
   : '';
 
 const subtitleNote = finalSubtitle
@@ -184,6 +186,8 @@ const subtitleNote = finalSubtitle
 
 // 单个候选的字段 schema（单候选 / 多候选共用）
 const candidateSchema = `{
+  "register": "Step 0 语域判断：信息 | 情绪",
+  "design_intent": "Step 0 一句话设计意图（这张靠什么取胜）",
   "hook": "Step 1 的产出（≤20 字）",
   "visual_concept": "Step 2 的产出（≤80 字，中文描述）",
   "title_text": "封面显示的主标题（中文 6-10 字，是 hook 的视觉化版本）",
@@ -207,7 +211,7 @@ const outputSpec = variants === 1
 
 const variantsNote = variants === 1
   ? ''
-  : `\n8. ${variants} 个候选必须是**真正不同的创意角度**（不同钩子、或同钩子下不同视觉切入），不要只是措辞微调${diverseLayouts ? `\n9. ${variants} 个候选请尽量采用**不同的版式 pattern**（从 playbook 里选不同项：左字右图 / 右字左图 / 字压图 / 上图下字 / 上字下图），便于横向对比构图` : ''}`;
+  : `\n10. ${variants} 个候选必须是**真正不同的创意角度**（不同钩子、或同钩子下不同视觉切入），不要只是措辞微调${diverseLayouts ? `\n11. ${variants} 个候选请尽量采用**不同的版式 pattern**（从 playbook 里选不同项：左字右图 / 右字左图 / 字压图 / 上图下字 / 上字下图），便于横向对比构图` : ''}`;
 
 const userPrompt = `请为这篇文章设计封面：
 
@@ -217,16 +221,17 @@ ${cs.title}
 【正文摘要】
 ${cs.body || ''}
 
-按 art_director.md 的三步法（找钩子 → 设计画面 → 写完整 prompt），${outputSpec}
+按 art_director.md 的流程（Step 0 设计判断 → 找钩子 → 设计画面 → 定版式 → 写完整 prompt），${outputSpec}
 
 关键要求：
-1. 钩子必须包含数字/反差/具体动作/人名之一；如文章有具体数字，优先用数字
-2. 必须先按 Step 2.5 给出 layout：从 playbook 选 pattern，标注各元素落格、留白格、密度；标题区与焦点不能抢同一格。image_prompt 的 COMPOSITION 段由 layout 翻译而来，体现 CANVAS UNITY（无飞地、无死区）
-3. image_prompt 必须显式列出色板占比（参照 brand_system.md 的色板表）
-4. image_prompt 必须显式禁止真品牌 logo、AI 视觉俗套、photorealism
-5. title_text 是封面上要渲染的中文文字
-6. ${subtitleNote}
-7. 只输出 JSON，不要 markdown 代码块标记，不要解释${characterExtra}${variantsNote}`;
+1. **先做 Step 0**：判断 register（信息 / 情绪）与 design_intent，后面手法服从它——信息类才追数字钩；情绪类走氛围意象、克制，**不要硬塞数字或大字直给**
+2. 钩子与画面按 register 选手法（信息类=具体物体+可猜主题；情绪类=暗示情绪、可抽象、忌写实直述）
+3. 必须先按 Step 2.5 给出 layout：先想视觉层级再从 playbook 选 pattern，标注各元素落格、留白格、密度；标题区与焦点不抢同一格。image_prompt 的 COMPOSITION 段由 layout 翻译而来，体现 CANVAS UNITY（无飞地、无死区）
+4. image_prompt 的 STYLE 段照搬 brand_system 的「技法与质感」（按风格，不要默认 ink/水彩）；色板段显式列 hex + 占比
+5. image_prompt 的 NEGATIVE = 通用 AI 俗套黑名单 + 禁真品牌 logo + brand_system 的「风格专属 anti-slop」（照搬）
+6. title_text 始终输出（作文章标题用）；但**情绪语域**时 image_prompt 的 TEXT IN IMAGE **不在图上渲染标题**（纯氛围图，标题交给文章标题），仅**信息语域**才在图上渲染大标题
+7. ${subtitleNote}
+8. 只输出 JSON，不要 markdown 代码块标记，不要解释${characterExtra}${variantsNote}`;
 
 // ── 版式坐标兜底校验：只挑客观硬错（非法坐标 / 缺核心结构字段），有错就让 LLM 重出 ──
 // 软问题（重叠、留白多少、pattern 选择）不管——那是设计取舍，人会自己跳过，代码不限制 LLM 思路。
@@ -256,7 +261,7 @@ function layoutErrors(c) {
   return errs;
 }
 
-const maxTokens = Math.max(4000, 3500 * variants);
+const maxTokens = Math.max(6000, 4500 * variants);
 const LAYOUT_MAX_RETRIES = 2;            // 版式坐标硬错最多重出次数
 const requiredFields = ['hook', 'visual_concept', 'title_text', 'image_prompt', 'layout'];
 let candidates;
@@ -346,6 +351,7 @@ for (const [i, c] of candidates.entries()) {
   metas.push(metaPath);
 
   console.error(`\n[候选 ${i + 1}/${candidates.length}]`);
+  console.error(`语域:      ${c.register || '—'}${c.design_intent ? ` · ${c.design_intent}` : ''}`);
   console.error(`钩子:      ${c.hook}`);
   console.error(`画面:      ${c.visual_concept}`);
   console.error(`主标题:    ${c.title_text}`);
@@ -386,8 +392,10 @@ for (const [i, c] of candidates.entries()) {
     process.exit(1);
   }
 
-  // 中文标题 QA + 自动重出（默认开；--no-qa 关闭）
-  if (qaEnabled) {
+  // 情绪语域的封面不渲染标题（纯氛围图），没有标题可校验 → 跳过 QA
+  const moodNoText = /情绪|情感|氛围|mood|emotion/i.test(c.register || '');
+  // 中文标题 QA + 自动重出（默认开；--no-qa 关闭；情绪图无标题时跳过）
+  if (qaEnabled && !moodNoText) {
     for (let attempt = 0; ; attempt++) {
       const qa = await verifyTitle(outPath, c.title_text);
       if (qa.skipped) { console.error(`[QA] 跳过（${qa.error}）`); break; }
