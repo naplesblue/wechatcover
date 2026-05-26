@@ -148,7 +148,7 @@ node server.mjs        # 然后打开 http://localhost:8787
 | `brand_system.md` | 默认品牌配置（暖纸蓝 + 青椒 IP），开箱即跑 |
 | `brand_system.template.md` | 模板骨架，带占位和注释 —— **fork 时复制改这个** |
 | `brand_system.example.md` | 填好的样例（带说明），对照着改 |
-| `presets/*.md` | 现成的可切换风格（冷工业灰 / 暖橘活泼 / 深色编辑风 / 学术纯排版 / risograph 中世纪）|
+| `presets/*.md` | 现成的可切换风格（冷工业灰 / 暖橘活泼 / 深色编辑风 / 学术纯排版 / risograph 中世纪 / 简洁科技玻璃卡）|
 
 定制流程：复制 `brand_system.template.md` → 改色板、字体、IP 角色、调性映射 → 用 `--brand-system 你的文件.md` 调用。色板比例结构（一个 ≥50% 主导色 + 精确签名色 + 单一点睛色）和视觉黑名单建议保留。
 
