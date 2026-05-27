@@ -1641,7 +1641,12 @@ function buildWireframe(c) {
   const add = (zone, cls, label) => { const area = wfZoneToArea(zone); if (!area) return; blocks.push(`<div class="wf-zone ${cls}" style="grid-area:${area}">${label}</div>`); };
   add(L.negative_space, 'wf-neg', '<span class="wf-tag">留白</span>');
   (L.elements || []).forEach((el) => { const f = el.role === 'focal'; add(el.zone, f ? 'wf-focal' : 'wf-support', `<span class="wf-tag">${f ? '焦点' : '辅助'}</span>${esc(el.what)}`); });
-  if (L.title && L.title.zone) add(L.title.zone, 'wf-title', `<span class="wf-tag">标题</span><b>${esc(c.title_text)}</b>`);
+  // 情绪 / 感悟 不渲染标题到封面,线框把 title.zone 标成「无文字」(像留白),不画标题大字
+  const wfMoodNoText = /情绪|情感|氛围|感悟|散文|随笔|mood|emotion|essay/i.test(c.register || '');
+  if (L.title && L.title.zone) {
+    if (wfMoodNoText) add(L.title.zone, 'wf-neg', `<span class="wf-tag">无文字</span>`);
+    else add(L.title.zone, 'wf-title', `<span class="wf-tag">标题</span><b>${esc(c.title_text)}</b>`);
+  }
   if (L.accent && L.accent.zone) add(L.accent.zone, 'wf-accent', `<span class="wf-dot">点睛${L.accent.what ? '·' + esc(L.accent.what) : ''}</span>`);
   let cells = '';
   for (const r of ['T', 'M', 'B']) for (const col of ['L', 'C', 'R']) cells += `<div class="wf-cell">${col}-${r}</div>`;
@@ -1657,11 +1662,13 @@ function renderWireframes(items) {
   lastLayouts = items;
   items.forEach((c, i) => {
     const L = c.layout || {};
+    const moodNoTextCard = /情绪|情感|氛围|感悟|散文|随笔|mood|emotion|essay/i.test(c.register || '');
+    const titleLabel = moodNoTextCard ? '文章标题（不画到图上）' : '主标题';
     const meta = [L.pattern ? `版式：${esc(L.pattern)}` : '', L.density ? `密度：${esc(L.density)}` : '', L.reading_flow ? `视线：${esc(L.reading_flow)}` : '', c.hook ? `抓手：${esc(c.hook)}` : ''].filter(Boolean).join('　·　');
     const div = document.createElement('div');
     div.className = 'wf-card';
     div.innerHTML = `
-      <div class="wf-card-header"><span class="prompt-index">方案 ${i + 1} 构图</span>${c.title_text ? `<span class="prompt-hook"><b>主标题：</b>${esc(c.title_text)}</span>` : ''}</div>
+      <div class="wf-card-header"><span class="prompt-index">方案 ${i + 1} 构图</span>${c.title_text ? `<span class="prompt-hook"><b>${titleLabel}：</b>${esc(c.title_text)}</span>` : ''}</div>
       ${meta ? `<div class="wf-meta">${meta}</div>` : ''}
       ${c.layout ? buildWireframe(c) : '<div class="wf-meta">该方案无版式信息（layout 缺失）</div>'}
       <div class="wf-legend"><span><i class="wf-sw wf-title"></i>标题</span><span><i class="wf-sw wf-focal"></i>焦点</span><span><i class="wf-sw wf-support"></i>辅助</span><span><i class="wf-sw wf-accent-sw"></i>点睛</span><span><i class="wf-sw wf-neg"></i>留白</span></div>

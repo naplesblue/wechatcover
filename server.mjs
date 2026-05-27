@@ -153,7 +153,7 @@ const server = http.createServer(async (req, res) => {
         const prompts = paths.map((mp) => {
           let m = {};
           try { m = JSON.parse(fs.readFileSync(mp, 'utf-8')); } catch {}
-          return { hook: m.hook || '', visual_concept: m.visual_concept || '', title_text: m.title_text || '', subtitle_text: m.subtitle_text || '', image_prompt: m.image_prompt || '', layout: m.layout || null };
+          return { register: m.register || '', design_intent: m.design_intent || '', hook: m.hook || '', visual_concept: m.visual_concept || '', title_text: m.title_text || '', subtitle_text: m.subtitle_text || '', image_prompt: m.image_prompt || '', layout: m.layout || null };
         });
         return sendJson(res, 200, { prompts });
       }
@@ -162,7 +162,7 @@ const server = http.createServer(async (req, res) => {
         const base = path.basename(p);
         let meta = {};
         try { meta = JSON.parse(fs.readFileSync(p.replace(/\.png$/i, '.meta.json'), 'utf-8')); } catch {}
-        return { url: `/cover?f=${encodeURIComponent(base)}`, file: base, hook: meta.hook || '', visual_concept: meta.visual_concept || '', title_text: meta.title_text || '', image_prompt: meta.image_prompt || '' };
+        return { url: `/cover?f=${encodeURIComponent(base)}`, file: base, register: meta.register || '', design_intent: meta.design_intent || '', hook: meta.hook || '', visual_concept: meta.visual_concept || '', title_text: meta.title_text || '', image_prompt: meta.image_prompt || '' };
       });
       return sendJson(res, 200, { covers });
     }
