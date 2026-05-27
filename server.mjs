@@ -23,7 +23,7 @@ import './lib/env.mjs';  // 加载 .env 到 process.env（供 /keys-status 判�
 const ROOT = import.meta.dirname;
 const PORT = parseInt(process.env.PORT || '8787', 10);
 const WEB_DIR = path.join(ROOT, 'covers', '_web');
-const PRESETS = new Set(['default', 'cold-industrial', 'warm-orange', 'dark-editorial', 'academic']);
+const PRESETS = new Set(['default', 'cold-industrial', 'warm-orange', 'dark-editorial', 'academic', 'riso-midcentury', 'clean-glasscard']);
 
 fs.mkdirSync(WEB_DIR, { recursive: true });
 
