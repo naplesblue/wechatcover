@@ -1113,6 +1113,11 @@
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
   }
 
+  /* 感悟模式 checkbox */
+  .essay-toggle { margin-top: 6px; margin-bottom: 14px; font-size: 13px; }
+  .essay-toggle label { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-primary); font-weight: 500; }
+  .essay-toggle input { width: 16px; height: 16px; accent-color: var(--ink); cursor: pointer; }
+
   /* 左栏分步标题 */
   .step-title { font-size: 13px; font-weight: 700; color: var(--text-primary); margin: 20px 0 10px; display: flex; align-items: baseline; gap: 8px; }
   .step-title:first-of-type { margin-top: 2px; }
@@ -1231,6 +1236,13 @@
             <label for="subtitle">角落小字（选填）</label>
             <input type="text" id="subtitle" placeholder="yourdomain.com · 2026.05.22">
           </div>
+        </div>
+
+        <div class="essay-toggle">
+          <label>
+            <input type="checkbox" id="essayMode">
+            <span>感悟模式（无文字 · 纯情绪意象图，散文/随笔/感悟类适用）</span>
+          </label>
         </div>
 
         <!-- 极客设置 accordion -->
@@ -1506,6 +1518,7 @@ function loadSettings() {
   if (s.keys) keysStore = { ...keysStore, ...s.keys };
   if (s.artProvider) $('artProvider').value = s.artProvider;
   if (s.provider) $('provider').value = s.provider;
+  if (typeof s.essayMode === 'boolean') $('essayMode').checked = s.essayMode;
   populateArtModels(s.artModel);
   populateImageModels(s.imageModel);
   syncKeyInputs();
@@ -1517,6 +1530,7 @@ function saveSettings() {
     artModel: $('artModel').value,
     provider: $('provider').value,
     imageModel: $('imageModel').value,
+    essayMode: $('essayMode').checked,
   }));
 }
 // 右栏画布展台的模式标签（构图预览 / 封面成图 / 提示词）
@@ -1717,6 +1731,7 @@ async function previewLayout() {
       imageModel: $('imageModel').value,
       keys: { ...keysStore },
       diverseLayouts: true,   // 探索阶段恒为多样，便于横向对比构图
+      essay: $('essayMode').checked,
       previewOnly: true,
     });
     stopStepLoader();
@@ -1809,6 +1824,7 @@ async function generate() {
       model: $('artModel').value,
       imageModel: $('imageModel').value,
       keys: { ...keysStore },
+      essay: $('essayMode').checked,
     });
 
     stopStepLoader();
@@ -2002,6 +2018,7 @@ $('artProvider').addEventListener('change', () => { populateArtModels(); syncKey
 $('provider').addEventListener('change', () => { populateImageModels(); syncKeyInputs(); saveSettings(); });
 $('artModel').addEventListener('change', saveSettings);
 $('imageModel').addEventListener('change', saveSettings);
+$('essayMode').addEventListener('change', saveSettings);
 $('artKey').addEventListener('input', () => {
   keysStore[artKeyName()] = $('artKey').value;
   if (imgKeyName() === artKeyName()) $('imgKey').value = $('artKey').value;

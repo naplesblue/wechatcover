@@ -12,7 +12,8 @@
 
 1. **语域（register）**：这篇属于哪类？
    - **信息 / 概念 / 科技**：有数据、产品、论点 → 走「清晰、有结构、可上数字/大字」一路。
-   - **情绪 / 人文 / 生活**：讲感受、故事、人 → 走「氛围、克制、意象」一路，**绝不用数字或大字直给**。
+   - **情绪 / 人文 / 生活**：讲感受、故事，**有具体场景/人物**可借 → 走「氛围、克制、意象」一路，**用文章里的具体物/场景做象征**（如空椅 + 信），**绝不用数字或大字直给**。
+   - **感悟 / 散文 / 随笔**：无强论点、无强场景，纯抒情/观察/思考 → 走「**纯意象**」一路：提 3-5 个**情绪关键词**（怅惘 / 温柔 / 孤独 / 释然…），**自由画一张表达这些情绪的图**（一片夕色、一扇窗、一只手、一片光、一笔抽象色块都行），**与文章具体物件解绑**，无文字。
 2. **该让人感到什么**：一句话情绪目标（如「冷静的紧迫」「温柔的怅惘」「利落的笃定」）。
 3. **design intent**：一句话设计意图——这张图靠什么取胜（一个强符号？一片氛围？一组对比？）。
 
@@ -35,8 +36,9 @@
   - 错误案例：有「2000亿美金市场」却选「GPU 想完了」——用概念替代数字，丢掉最有冲击力的抓手。
 - **情绪 / 人文 / 生活类**：**不要**为了「钩子」硬塞数字或口号。钩子是**一个能唤起感受的意象或瞬间**（一封信、一束光、一个背影），点的是情绪不是信息；留白胜过直给。
   - 错误案例：一篇看哭的观影随笔，标题硬写「一封情书看哭老登」——把余味写成大白话，丢了克制。
+- **感悟 / 散文 / 随笔类**：**跳过"钩子"概念**。`hook` 字段直接填 **3-5 个情绪关键词**（中文短词：怅惘 / 温柔 / 孤独 / 释然 / 笃定…），用「·」或空格分隔。**不要写口号、不要数字、不要叙事**。这些关键词供 Step 2 自由作画。
 
-钩子始终是为了「让人产生点进来的冲动」，但**冲动的来源因语域而异**：信息类靠信息量/反差，情绪类靠共鸣/氛围。
+钩子始终是为了「让人产生点进来的冲动」，但**冲动的来源因语域而异**：信息类靠信息量/反差，情绪类靠共鸣/氛围，感悟类靠纯氛围沉浸。
 
 ### 正反例（信息类）
 
@@ -59,8 +61,11 @@
   - **画面通过性测试**：朋友不读标题能否猜出主题？能就过。
   - 不能是「抽象元素的组合」（发光的脑子、数据流）。
 - **情绪 / 人文 / 生活类**：画面追求**氛围与意象**，可以更抽象、更克制——一个剪影、一束光、一个空镜，靠色彩与留白传情。
-  - **不要**写实地把情节画出来（如「老人捧信落泪」的写实特写），那会把余味写没。用**暗示**代替**直述**。
+  - 允许借**文章里的具体物/场景**做象征（如空椅 + 信 + 影院光），但**不要**写实地把情节画出来（如「老人捧信落泪」的写实特写）。用**暗示**代替**直述**。
   - 通过性测试放宽为：朋友看完能否**感到对的情绪**？
+- **感悟 / 散文 / 随笔类**：**纯意象**——根据 Step 1 的情绪关键词，**自由画一张表达这些情绪的图**（夕色、窗、雾、剪影、一片光、抽象笔触/色块……都行）。**不要画文章里的人物/物件**，**与文章具体细节解绑**，靠色、光、留白传情。
+  - 通过性测试：朋友看完能否**感到对的情绪氛围**？(无需猜出主题)
+  - 错误案例：散文文章里出现具体角色或情节复刻——那就退回情绪类了，丢了"纯"。
 
 ### 正反例（信息类）
 
@@ -230,10 +235,12 @@ surface carries the mood, the signature color is a disciplined accent, not the v
 TEXT IN IMAGE (depends on register):
 - register = 信息: main title "{title_text}" — Chinese, in the brand's title typeface
   (see 字体规范), large and dominant (≥40% of visual weight).
-- register = 情绪: render NO title text on the cover — the image is PURE ATMOSPHERE.
+- register = 情绪 OR 感悟: render NO title text on the cover — the image is PURE ATMOSPHERE.
   A slogan stamped on a mood image looks cheap; the title lives outside the cover
   (as the article headline in the feed). Do NOT draw the title; at most a tiny quiet
   corner mark if the brand explicitly calls for one.
+  (感悟 register goes further: the image is a free pure-mood painting, NOT tied to
+  any article-specific people/objects/scenes.)
 - corner small text "{subtitle_text}" (only if provided): small, legible, sufficient
   contrast, bottom-left or top-right with breathing room.
 

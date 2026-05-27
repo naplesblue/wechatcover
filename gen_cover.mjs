@@ -80,6 +80,8 @@ const qaRetries = (() => { const v = parseInt(arg('qa-retries', '1'), 10); retur
 const imageProvider = typeof arg('provider') === 'string' ? arg('provider') : null;
 // 多方案版式多样化：仅当 variants>1 时生效，让各候选尽量用不同 pattern（默认关 = 按内容自动选最优）
 const diverseLayouts = args.includes('--diverse-layouts');
+// 感悟模式：手动强制 register=感悟（无文字、纯情绪意象图，适合散文/随笔/感悟）
+const essayMode = args.includes('--essay');
 
 if (!fromTextPath) {
   console.error('[ERROR] --from-text 必填');
@@ -186,7 +188,7 @@ const subtitleNote = finalSubtitle
 
 // 单个候选的字段 schema（单候选 / 多候选共用）
 const candidateSchema = `{
-  "register": "Step 0 语域判断：信息 | 情绪",
+  "register": "Step 0 语域判断：信息 | 情绪 | 感悟",
   "design_intent": "Step 0 一句话设计意图（这张靠什么取胜）",
   "hook": "Step 1 的产出（≤20 字）",
   "visual_concept": "Step 2 的产出（≤80 字，中文描述）",
@@ -222,7 +224,7 @@ ${cs.title}
 ${cs.body || ''}
 
 按 art_director.md 的流程（Step 0 设计判断 → 找钩子 → 设计画面 → 定版式 → 写完整 prompt），${outputSpec}
-
+${essayMode ? '\n**⚠️ 用户已手动选定 register = 感悟**：跳过 Step 0 的自动语域判断，直接按 **感悟** 语域走——`hook` 字段填 3-5 个情绪关键词（非钩子非数字）；画面是**自由意象、与文章具体物件解绑**的纯氛围图；**无文字**。\n' : ''}
 关键要求：
 1. **先做 Step 0**：判断 register（信息 / 情绪）与 design_intent，后面手法服从它——信息类才追数字钩；情绪类走氛围意象、克制，**不要硬塞数字或大字直给**
 2. 钩子与画面按 register 选手法（信息类=具体物体+可猜主题；情绪类=暗示情绪、可抽象、忌写实直述）
@@ -392,8 +394,8 @@ for (const [i, c] of candidates.entries()) {
     process.exit(1);
   }
 
-  // 情绪语域的封面不渲染标题（纯氛围图），没有标题可校验 → 跳过 QA
-  const moodNoText = /情绪|情感|氛围|mood|emotion/i.test(c.register || '');
+  // 情绪 / 感悟 语域的封面不渲染标题（纯氛围图），没有标题可校验 → 跳过 QA
+  const moodNoText = /情绪|情感|氛围|感悟|散文|随笔|mood|emotion|essay/i.test(c.register || '');
   // 中文标题 QA + 自动重出（默认开；--no-qa 关闭；情绪图无标题时跳过）
   if (qaEnabled && !moodNoText) {
     for (let attempt = 0; ; attempt++) {
