@@ -23,7 +23,40 @@ import './lib/env.mjs';  // 加载 .env 到 process.env（供 /keys-status 判�
 const ROOT = import.meta.dirname;
 const PORT = parseInt(process.env.PORT || '8787', 10);
 const WEB_DIR = path.join(ROOT, 'covers', '_web');
-const PRESETS = new Set(['default', 'cold-industrial', 'warm-orange', 'dark-editorial', 'academic', 'riso-midcentury', 'clean-glasscard']);
+// 风格预设动态扫盘：同时列 presets/（公开，入库）+ private/（私有，gitignored）
+// 文件名安全约束：只允许 [a-zA-Z0-9_-]，避免路径越界
+const PRESET_DIRS = ['presets', 'private'];
+function safePresetName(name) {
+  return typeof name === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(name);
+}
+function presetLabel(name) {
+  if (name === 'default') return '暖纸蓝（默认）';
+  for (const dir of PRESET_DIRS) {
+    try {
+      const text = fs.readFileSync(path.join(ROOT, dir, `${name}.md`), 'utf-8');
+      // 取 "# 品牌视觉系统（...）" 括号内文字，去掉「风格预设：」前缀
+      const m = text.match(/^#\s+品牌视觉系统[（(]([^）)]+)[）)]/m);
+      if (m) return m[1].trim().replace(/^(风格)?预设[：:]\s*/, '');
+    } catch {}
+  }
+  return name;
+}
+function listPresets() {
+  const names = new Set(['default']);
+  for (const dir of PRESET_DIRS) {
+    try {
+      for (const f of fs.readdirSync(path.join(ROOT, dir))) {
+        if (f.endsWith('.md')) {
+          const name = f.slice(0, -3);
+          if (safePresetName(name)) names.add(name);
+        }
+      }
+    } catch {}
+  }
+  // default 第一，其余按名字字母序
+  const arr = [...names].filter((n) => n !== 'default').sort();
+  return [{ name: 'default', label: presetLabel('default') }, ...arr.map((n) => ({ name: n, label: presetLabel(n) }))];
+}
 
 fs.mkdirSync(WEB_DIR, { recursive: true });
 
@@ -45,8 +78,12 @@ function readBody(req) {
 }
 
 function brandSystemPath(preset) {
-  if (!PRESETS.has(preset) || preset === 'default') return path.join(ROOT, 'brand_system.md');
-  return path.join(ROOT, 'presets', `${preset}.md`);
+  if (!preset || preset === 'default' || !safePresetName(preset)) return path.join(ROOT, 'brand_system.md');
+  for (const dir of PRESET_DIRS) {
+    const p = path.join(ROOT, dir, `${preset}.md`);
+    if (fs.existsSync(p)) return p;
+  }
+  return path.join(ROOT, 'brand_system.md');  // 找不到时退回默认
 }
 
 // 跑 gen_cover.mjs，返回生成的图片绝对路径数组
@@ -114,6 +151,11 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/') {
       const html = fs.readFileSync(path.join(ROOT, 'web', 'index.html'));
       return send(res, 200, 'text/html; charset=utf-8', html);
+    }
+
+    // 风格预设列表（动态扫盘：presets/ 公开 + private/ 私有合并；前端用它生成下拉）
+    if (req.method === 'GET' && url.pathname === '/presets') {
+      return sendJson(res, 200, { presets: listPresets() });
     }
 
     // key 是否就绪（只回布尔，绝不回 key 值）——页面据此判断 .env 里有没有

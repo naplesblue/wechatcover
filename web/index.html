@@ -1221,15 +1221,7 @@
           <div class="field">
             <label for="preset">风格艺术预设</label>
             <div class="select-wrapper">
-              <select id="preset">
-                <option value="default">暖纸蓝（默认）</option>
-                <option value="cold-industrial">冷工业灰</option>
-                <option value="warm-orange">暖橘活泼</option>
-                <option value="dark-editorial">深色编辑风</option>
-                <option value="academic">学术纯排版</option>
-                <option value="riso-midcentury">risograph 中世纪</option>
-                <option value="clean-glasscard">简洁科技玻璃卡</option>
-              </select>
+              <select id="preset"><!-- 启动时由 loadPresets() 动态从 /presets 填充 --></select>
             </div>
           </div>
           <div class="field subtitle-field">
@@ -1531,6 +1523,7 @@ function saveSettings() {
     provider: $('provider').value,
     imageModel: $('imageModel').value,
     essayMode: $('essayMode').checked,
+    preset: $('preset').value,
   }));
 }
 // 右栏画布展台的模式标签（构图预览 / 封面成图 / 提示词）
@@ -1546,6 +1539,19 @@ async function postJson(path, body) {
 // ── key 就绪检查 ──
 let envKeys = { OPENAI_API_KEY: false, DEEPSEEK_API_KEY: false, DASHSCOPE_API_KEY: false };
 async function loadKeyStatus() { try { envKeys = await (await fetch('/keys-status')).json(); } catch {} }
+
+// 风格预设动态加载：从 /presets 拿合并后的列表（presets/ + private/），生成下拉
+async function loadPresets() {
+  try {
+    const { presets } = await (await fetch('/presets')).json();
+    const sel = $('preset');
+    sel.innerHTML = (presets || []).map((p) => `<option value="${esc(p.name)}">${esc(p.label)}</option>`).join('');
+    // 恢复上次选择
+    let s = {};
+    try { s = JSON.parse(localStorage.getItem(SK) || '{}'); } catch {}
+    if (s.preset && presets.some((p) => p.name === s.preset)) sel.value = s.preset;
+  } catch {}
+}
 function keyReady(name) { return (keysStore[name] && keysStore[name].trim() !== '') || !!envKeys[name]; }
 function missingKeys(previewOnly) {
   const an = artKeyName(), inm = imgKeyName();
@@ -2026,6 +2032,7 @@ $('provider').addEventListener('change', () => { populateImageModels(); syncKeyI
 $('artModel').addEventListener('change', saveSettings);
 $('imageModel').addEventListener('change', saveSettings);
 $('essayMode').addEventListener('change', saveSettings);
+$('preset').addEventListener('change', saveSettings);
 $('artKey').addEventListener('input', () => {
   keysStore[artKeyName()] = $('artKey').value;
   if (imgKeyName() === artKeyName()) $('imgKey').value = $('artKey').value;
@@ -2041,6 +2048,7 @@ $('imgKey').addEventListener('input', () => {
 initTheme();
 loadSettings();
 loadKeyStatus();
+loadPresets();
 </script>
 </body>
 </html>
