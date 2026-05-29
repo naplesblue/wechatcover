@@ -7,6 +7,7 @@
  *     --prompt-file /tmp/prompt.txt \
  *     --out covers/my-cover.png \
  *     [--provider openai|qwen] [--size 2400x1024] [--quality medium] [--n 1]
+ *     [--ip-image a.png,b.png]   # IP 角色参考图（逗号分隔多张），走 edits 自然融合，仅 openai
  *
  * 也可以从 stdin 读 prompt：
  *   cat prompt.txt | node render.mjs --out out.png
@@ -55,6 +56,19 @@ const quality = arg('quality', 'low');
 const n = parseInt(arg('n', '1'), 10);
 const model = arg('model', 'gpt-image-2');
 const provider = arg('provider') || process.env.IMAGE_PROVIDER || 'openai';
+// IP 角色参考图：--ip-image a.png,b.png（逗号分隔）。传了就走 edits 自然融合（仅 openai）。
+const ipImageArg = arg('ip-image');
+const refImages = [];
+if (ipImageArg) {
+  for (const p of String(ipImageArg).split(',').map((s) => s.trim()).filter(Boolean)) {
+    if (!fs.existsSync(p)) { console.error(`[ERROR] --ip-image 文件不存在: ${p}`); process.exit(1); }
+    refImages.push({ buffer: fs.readFileSync(p), name: path.basename(p) });
+  }
+}
+if (refImages.length && provider !== 'openai') {
+  console.error('[ERROR] --ip-image 参考图融合目前仅支持 --provider openai（edits 端点）');
+  process.exit(1);
+}
 
 if (!outPath) {
   console.error('[ERROR] --out 必填');
@@ -81,13 +95,13 @@ if (prompt.length < 50) {
 }
 
 console.error(`[INFO] prompt 长度: ${prompt.length} 字符`);
-console.error(`[INFO] provider: ${provider}, size: ${size}, quality: ${quality}`);
+console.error(`[INFO] provider: ${provider}, size: ${size}, quality: ${quality}${refImages.length ? `, IP参考图: ${refImages.length} 张(edits)` : ''}`);
 
 // ── 出图（按 provider 路由）+ 写文件 ──
 async function main() {
   let buffers;
   try {
-    buffers = await generate(provider, { prompt, size, quality, n, model });
+    buffers = await generate(provider, { prompt, size, quality, n, model, refImages });
   } catch (e) {
     console.error(`[FATAL] ${e.message}`);
     process.exit(1);

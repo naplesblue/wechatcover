@@ -125,6 +125,7 @@ node server.mjs        # 然后打开 http://localhost:8787
 | `--out <path>` | `covers/{slug}-{timestamp}.png` | 输出图片路径 |
 | `--brand-system <path>` | `brand_system.md` | 品牌配置文件（切换风格预设）|
 | `--with-character` | 关 | （进阶，仅 CLI）启用 brand_system 定义的 IP 角色（默认风格=青椒；多数预设无 IP）。详见「IP 角色（进阶）」 |
+| `--ip-image a.png,b.png` | 无 | （进阶）IP 角色**参考图**（逗号分隔多张），走 OpenAI edits 端点让角色按参考图**自然融合**进画面，比纯文字更稳。隐含开启角色；仅 `--provider openai`。**需配一个「IP 角色规范」描述与参考图一致的 brand_system**（见「IP 角色（进阶）」）|
 | `--subtitle "..."` | 空 | 角落小字（如网址 + 日期）；不传则不渲染 |
 | `--quality low\|medium\|high` | `low` | 出图画质 |
 | `--size 1920x816\|2400x1024` | `1920x816` | 尺寸（均为公众号首图 47:20）|
@@ -154,9 +155,9 @@ node server.mjs        # 然后打开 http://localhost:8787
 
 ## IP 角色（进阶）
 
-IP 角色是命令行进阶功能，**Web UI 不提供**（避免新用户误触、冒出个意料之外的角色）。
+IP 角色有**两种**用法：
 
-启用：`--with-character`。具体出谁由**当前 brand_system / 风格预设**决定：
+**1) 纯文字（`--with-character`）** — 角色长相由 brand_system「IP 角色规范」的**文字描述**决定。具体出谁看当前风格：
 
 | 风格 | `--with-character` 的角色 |
 |---|---|
@@ -164,8 +165,18 @@ IP 角色是命令行进阶功能，**Web UI 不提供**（避免新用户误触
 | 暖橘活泼 | 圆润友好的橘色吉祥物 |
 | 冷工业灰 / 深色编辑风 / 学术纯排版 | 无 IP（忽略此参数）|
 
-- 角色定义在 brand_system 的「IP 角色规范」里——改它 / fork 就是你自己的角色。
-- 目前角色是**文字描述**，多次生成的具体长相不完全一致；锁定形象的参考图注入（`--ip-image`）在规划中。
+纯文字方式多次生成的长相不完全一致（描述只能定大方向）。
+
+**2) 参考图（`--ip-image`，推荐）** — 给一张（或几张）角色参考图，走 OpenAI edits 端点让角色**按参考图自然融合**进画面，长相稳得多：
+
+```bash
+node gen_cover.mjs --from-text article.md --brand-system 你的IP风格.md \
+  --ip-image path/to/mascot.png
+```
+
+- **关键**：参考图要配一个「IP 角色规范」**与参考图一致**的 brand_system。因为艺术指导 LLM 是纯文本、看不到图——brand_system 要给个**最小身份**（如「一只辣椒吉祥物」）防它瞎编，并**只写动作/情绪、不硬规定外观**（外形 100% 交给参考图）。写法见 `brand_system.template.md` 的「IP 角色规范」注释。
+- 仅 `--provider openai`（edits 端点）。可传多张（逗号分隔）。
+- 角色定义 / 参考图都在你自己的 brand_system / `private/` 里——fork 改了就是你自己的角色。
 
 ## 设计哲学
 

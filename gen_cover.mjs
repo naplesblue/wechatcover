@@ -13,6 +13,7 @@
  *   node gen_cover.mjs --from-text article.md --out cover.png
  *     [--subtitle "yourdomain.com · 2026.05.21"]  # 默认空（无角落小字）
  *     [--with-character]                           # 默认关（不带 IP 角色）
+ *     [--ip-image a.png,b.png]                     # IP 角色参考图（逗号分隔），走 edits 自然融合；隐含开启角色，仅 openai
  *     [--brand-system path/to/brand_system.md]     # 默认 ./brand_system.md
  *     [--quality low|medium|high]                  # 默认 low（~¥0.02/张）
  *     [--size 1920x816|2400x1024]                  # 默认 1920x816
@@ -65,7 +66,9 @@ const outOverride = arg('out', null);
 const subtitleOverride = args.includes('--subtitle')
   ? (args[args.indexOf('--subtitle') + 1] ?? '')
   : null;
-const withCharacter = args.includes('--with-character');
+// IP 角色参考图：--ip-image a.png,b.png（逗号分隔）。给了就走 edits 自然融合，并隐含开启角色。
+const ipImage = typeof arg('ip-image') === 'string' ? arg('ip-image') : null;
+const withCharacter = args.includes('--with-character') || !!ipImage;
 const brandSystemPath = arg('brand-system', path.join(ROOT, 'brand_system.md'));
 // 艺术指导模型：--model > GEN_COVER_MODEL 环境变量 > 默认 deepseek-v4-flash
 const modelOverride = typeof arg('model') === 'string' ? arg('model') : null;
@@ -179,7 +182,7 @@ const subtitleJsonLine = finalSubtitle
 
 // 带 IP 才追加 CHARACTER 指令；不带 IP 时 brand_system 的 IP 段已被移除，无需任何说明
 const characterExtra = withCharacter
-  ? `\n9. **必须**在 image_prompt 的 SUBJECT 段后追加 CHARACTER 段（参考 art_director.md「角色启用条款」与 brand_system.md「IP 角色规范」），让 IP 角色与画面互动`
+  ? `\n9. **必须**在 image_prompt 的 SUBJECT 段后追加 CHARACTER 段（参考 art_director.md「角色启用条款」与 brand_system.md「IP 角色规范」），让 IP 角色与画面互动${ipImage ? `\n   ⚠️ 本次会把 IP 角色**参考图**一并喂给图像模型（edits 融合）。**参考图是角色长相的唯一依据**：CHARACTER 段只写"the mascot shown in the reference image"，用 brand_system 给的**最小身份**点明它本质是什么（如 a chili-pepper mascot），然后**只描述它的动作 / 表情 / 互动**。\n   **硬禁**：CHARACTER 段不得出现任何参考图里没有的外观词——不要写衣服 / 帽子 / 贝雷帽 / 马甲 / 围巾 / 配饰 / 颜色 / 五官等任何外形描述（"keep the reference's exact look, do not add any clothing/accessories/colors not in the reference"）。外形 100% 交给参考图，文字只管它"在做什么、什么情绪"。更不要把它画成人。` : ''}`
   : '';
 
 const subtitleNote = finalSubtitle
@@ -381,8 +384,9 @@ for (const [i, c] of candidates.entries()) {
   // 若 inherit 会污染本脚本 stdout（最终路径输出），让调用方（如 web server）解析到重复行。
   // 只保留 render 的 stderr 进度。
   const providerArg = imageProvider ? ` --provider ${imageProvider}` : '';
+  const ipArg = ipImage ? ` --ip-image ${ipImage}` : '';
   const renderOnce = () => execSync(
-    `node ${path.join(ROOT, 'render.mjs')} --prompt-file ${tmpPromptFile} --out ${outPath} --size ${size} --quality ${quality}${providerArg}`,
+    `node ${path.join(ROOT, 'render.mjs')} --prompt-file ${tmpPromptFile} --out ${outPath} --size ${size} --quality ${quality}${providerArg}${ipArg}`,
     { stdio: ['inherit', 'ignore', 'inherit'], cwd: ROOT },
   );
 
