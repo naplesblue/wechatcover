@@ -1117,6 +1117,8 @@
   .essay-toggle { margin-top: 6px; margin-bottom: 14px; font-size: 13px; }
   .essay-toggle label { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-primary); font-weight: 500; }
   .essay-toggle input { width: 16px; height: 16px; accent-color: var(--ink); cursor: pointer; }
+  .char-pick { margin: 6px 0 0 24px; font-size: 12px; color: var(--text-secondary); }
+  .char-pick select { padding: 3px 6px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary); font-family: inherit; }
 
   /* 左栏分步标题 */
   .step-title { font-size: 13px; font-weight: 700; color: var(--text-primary); margin: 20px 0 10px; display: flex; align-items: baseline; gap: 8px; }
@@ -1235,6 +1237,17 @@
             <input type="checkbox" id="essayMode">
             <span>感悟模式（无文字 · 纯情绪意象图，散文/随笔/感悟类适用）</span>
           </label>
+        </div>
+
+        <!-- IP 角色开关：仅当扫到 private/ip/ 有参考图时显示（由 loadIpImages 控制） -->
+        <div class="essay-toggle" id="charField" hidden>
+          <label>
+            <input type="checkbox" id="withCharacter">
+            <span>带 IP 角色（参考图融合，需配 IP 风格预设）</span>
+          </label>
+          <div class="char-pick" id="charPick" hidden>
+            参考图 <select id="ipImage"></select>
+          </div>
         </div>
 
         <!-- 极客设置 accordion -->
@@ -1524,6 +1537,8 @@ function saveSettings() {
     imageModel: $('imageModel').value,
     essayMode: $('essayMode').checked,
     preset: $('preset').value,
+    withCharacter: $('withCharacter').checked,
+    ipImage: $('ipImage').value,
   }));
 }
 // 右栏画布展台的模式标签（构图预览 / 封面成图 / 提示词）
@@ -1551,6 +1566,25 @@ async function loadPresets() {
     try { s = JSON.parse(localStorage.getItem(SK) || '{}'); } catch {}
     if (s.preset && presets.some((p) => p.name === s.preset)) sel.value = s.preset;
   } catch {}
+}
+
+// IP 角色：扫 private/ip/ 有图才显示开关（开源用户没这目录 → 整块隐藏）
+async function loadIpImages() {
+  try {
+    const { images } = await (await fetch('/ip-images')).json();
+    if (!images || !images.length) return;  // 无参考图 → 开关保持隐藏
+    $('charField').hidden = false;
+    $('ipImage').innerHTML = images.map((f) => `<option value="${esc(f)}">${esc(f)}</option>`).join('');
+    let s = {};
+    try { s = JSON.parse(localStorage.getItem(SK) || '{}'); } catch {}
+    if (typeof s.withCharacter === 'boolean') $('withCharacter').checked = s.withCharacter;
+    if (s.ipImage && images.includes(s.ipImage)) $('ipImage').value = s.ipImage;
+    updateCharState();
+  } catch {}
+}
+// 参考图选择器仅在勾了角色时显示
+function updateCharState() {
+  $('charPick').hidden = !$('withCharacter').checked;
 }
 function keyReady(name) { return (keysStore[name] && keysStore[name].trim() !== '') || !!envKeys[name]; }
 function missingKeys(previewOnly) {
@@ -1745,6 +1779,8 @@ async function previewLayout() {
       keys: { ...keysStore },
       diverseLayouts: true,   // 探索阶段恒为多样，便于横向对比构图
       essay: $('essayMode').checked,
+      withCharacter: $('withCharacter').checked,
+      ipImage: $('ipImage').value,
       previewOnly: true,
     });
     stopStepLoader();
@@ -1838,6 +1874,8 @@ async function generate() {
       imageModel: $('imageModel').value,
       keys: { ...keysStore },
       essay: $('essayMode').checked,
+      withCharacter: $('withCharacter').checked,
+      ipImage: $('ipImage').value,
     });
 
     stopStepLoader();
@@ -2033,6 +2071,8 @@ $('artModel').addEventListener('change', saveSettings);
 $('imageModel').addEventListener('change', saveSettings);
 $('essayMode').addEventListener('change', saveSettings);
 $('preset').addEventListener('change', saveSettings);
+$('withCharacter').addEventListener('change', () => { updateCharState(); saveSettings(); });
+$('ipImage').addEventListener('change', saveSettings);
 $('artKey').addEventListener('input', () => {
   keysStore[artKeyName()] = $('artKey').value;
   if (imgKeyName() === artKeyName()) $('imgKey').value = $('artKey').value;
@@ -2049,6 +2089,7 @@ initTheme();
 loadSettings();
 loadKeyStatus();
 loadPresets();
+loadIpImages();
 </script>
 </body>
 </html>

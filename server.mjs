@@ -86,12 +86,28 @@ function brandSystemPath(preset) {
   return path.join(ROOT, 'brand_system.md');  // 找不到时退回默认
 }
 
+// IP 角色参考图：约定放在 private/ip/。扫到图片才让前端显示角色开关（开源用户没这目录 → 开关隐藏）。
+const IP_DIR = path.join(ROOT, 'private', 'ip');
+const IP_IMG_RE = /^[a-zA-Z0-9][a-zA-Z0-9_.-]*\.(png|jpe?g|webp)$/i;
+function listIpImages() {
+  try {
+    return fs.readdirSync(IP_DIR).filter((f) => IP_IMG_RE.test(f)).sort();
+  } catch { return []; }
+}
+// 把前端传来的文件名安全解析为 private/ip 下的绝对路径（必须在扫描列表里，防越界）
+function resolveIpImage(name) {
+  if (!name || !IP_IMG_RE.test(name)) return null;
+  if (!listIpImages().includes(name)) return null;
+  return path.join(IP_DIR, name);
+}
+
 // 跑 gen_cover.mjs，返回生成的图片绝对路径数组
 // env: 页面填的 key/模型 env 注入（覆盖 .env；仅传 spawn 的 env，不进命令行，不落日志）
-function runGenCover({ mdFile, preset, withCharacter, subtitle, variants, outBase, provider, artModel, env, previewOnly, diverseLayouts, essay }) {
+function runGenCover({ mdFile, preset, withCharacter, subtitle, variants, outBase, provider, artModel, env, previewOnly, diverseLayouts, essay, ipImagePath }) {
   return new Promise((resolve, reject) => {
     const a = ['gen_cover.mjs', '--from-text', mdFile, '--out', outBase, '--brand-system', brandSystemPath(preset), '--force'];
-    if (withCharacter) a.push('--with-character');
+    if (ipImagePath) a.push('--ip-image', ipImagePath);  // 参考图融合（隐含开启角色）
+    else if (withCharacter) a.push('--with-character');
     if (typeof subtitle === 'string') a.push('--subtitle', subtitle);
     if (variants > 1) a.push('--variants', String(variants));
     if (provider) a.push('--provider', provider);
@@ -158,6 +174,11 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, { presets: listPresets() });
     }
 
+    // IP 角色参考图列表（扫 private/ip/）；前端据此决定显不显示角色开关。空 = 没这目录/没图。
+    if (req.method === 'GET' && url.pathname === '/ip-images') {
+      return sendJson(res, 200, { images: listIpImages() });
+    }
+
     // key 是否就绪（只回布尔，绝不回 key 值）——页面据此判断 .env 里有没有
     if (req.method === 'GET' && url.pathname === '/keys-status') {
       return sendJson(res, 200, {
@@ -183,12 +204,14 @@ const server = http.createServer(async (req, res) => {
       const artModel = (typeof body.model === 'string' && body.model.trim()) ? body.model.trim() : null;
       const env = envFromBody(body, provider);  // 页面填的 key/模型 → env（非空才注入，覆盖 .env）
       const previewOnly = !!body.previewOnly;
+      // IP 角色参考图：前端传文件名，安全解析为 private/ip 下路径（仅 openai 支持 edits）
+      const ipImagePath = (body.withCharacter && provider === 'openai') ? resolveIpImage(body.ipImage) : null;
       const ts = Date.now();
       const mdFile = path.join(WEB_DIR, `${ts}.md`);
       fs.writeFileSync(mdFile, markdown, 'utf-8');
       const outBase = path.join(WEB_DIR, `${ts}.png`);
       const v = Math.max(1, Math.min(4, parseInt(variants, 10) || 1));
-      const paths = await runGenCover({ mdFile, preset, withCharacter: !!withCharacter, subtitle, variants: v, outBase, provider, artModel, env, previewOnly, diverseLayouts: !!body.diverseLayouts, essay: !!body.essay });
+      const paths = await runGenCover({ mdFile, preset, withCharacter: !!withCharacter, subtitle, variants: v, outBase, provider, artModel, env, previewOnly, diverseLayouts: !!body.diverseLayouts, essay: !!body.essay, ipImagePath });
 
       // 只出提示词：paths 是 meta 文件路径，读出 prompt 返回（不出图）
       if (previewOnly) {
