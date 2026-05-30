@@ -179,6 +179,17 @@ LIGHTING & MOOD:
 - match the emotional target stated in design_intent
 
 COMPOSITION (derive from the layout field — translate it, do not improvise):
+⚠️ Write PLAIN SPATIAL PROSE only. The 3×3 grid is INTERNAL scaffolding — the image model
+   must NEVER see it, or it will draw literal grid lines/labels. So in image_prompt:
+   - NO grid codes (L-T, R-B, C-M, L-T..R-B) — those live ONLY in the layout field.
+   - NO grid-mechanism words either: do NOT write "3x3 grid", "grid cell", "rows/columns",
+     "no cell is wasted", etc.
+   - Just say where things sit in natural words: "left third / center / lower-right /
+     top-right corner / foreground / background / bottom strip", and how the eye moves.
+   - NEVER instruct a drawn divider between zones: no "vertical/horizontal line separates
+     the two zones", no panel/border/frame/split-line representing the layout. Zone
+     boundaries are INVISIBLE — separation comes from spacing, content and negative space,
+     never a drawn line. (If a divider line appears in the image, this rule was violated.)
 - 2.35:1 horizontal aspect ratio = 47:20 (1920×816 default; 2400×1024 if high-res)
 - The layout field already decided WHERE everything goes on a 3×3 thirds grid.
   Translate each placement into concrete spatial language the renderer understands.
@@ -191,7 +202,7 @@ COMPOSITION (derive from the layout field — translate it, do not improvise):
   center-right), place each element in its zone, and name the negative-space
   region explicitly.
 
-**THE WHOLE CANVAS IS ONE DESIGNED OBJECT.** Every cell of the grid is either
+**THE WHOLE CANVAS IS ONE DESIGNED OBJECT.** Every part of the canvas is either
 intentional content or intentional negative space — never accidentally empty.
 The reading flow (e.g. left→center→right) connects focal point, title and
 supporting elements into a single path. NO disconnected islands: no floating
@@ -201,7 +212,7 @@ The freedom to invent is at the SUBJECT / concept level (what to draw, what
 metaphor). The LAYOUT is NOT free-form — it follows the chosen playbook pattern.
 
 Diagnostic questions to ask before finalizing:
-- Does every grid cell have a purpose (content, or designated negative space)?
+- Does every part of the canvas have a purpose (content, or designated negative space)?
 - Is the title text visually connected to the rest of the illustration, or
   floating in isolation?
 - Does the whole canvas read as one frame following the reading flow, or does it

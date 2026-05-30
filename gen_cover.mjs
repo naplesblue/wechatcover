@@ -338,6 +338,31 @@ for (let attempt = 0; ; attempt++) {
   layoutFix = `\n\n【重要修正】上次 layout 含非法坐标（${detail}）。坐标只能是 列 L/C/R 与 行 T/M/B 的组合（单格如 C-M，区间如 L-T..R-B）；底部整行 = L-B..R-B，顶部整行 = L-T..R-T。请重新输出全部候选，确保每个 zone 和 focal_point 都是合法坐标。`;
 }
 
+// 清洗 image_prompt：把"网格脚手架"从送给图像模型的提示词里抹掉。
+// layout 的 3×3 网格只是我们排版的内部表示——坐标码（L-T / R-B）会被画成文字标签，
+// 「3x3 grid / grid cell」这类机制词会被画成网格构造线。图像模型只该看到"东西在画面哪个位置"
+// 的空间散文。LLM 常把脚手架词漏进 prompt，故代码兜底中性化，不依赖 LLM 听话。
+function sanitizeImagePrompt(prompt) {
+  return prompt
+    .replace(/\b[LCR]-[TMB]\s*\.\.\s*[LCR]-[TMB]\b/g, '')  // 区间码 L-T..R-B
+    .replace(/\b[LCR]-[TMB]\b/g, '')                        // 单格码 C-M
+    // 删掉"画一条线/边框分隔版式分区"的指令（分区边界应隐形，LLM 常materialize成实线）
+    .replace(/\b(?:a |an )?(?:thin |bold |subtle )?(?:[a-z-]+ )?(?:vertical |horizontal )?(?:line|divider|border|stripe)\s+(?:that\s+)?(?:separat\w+|divid\w+|split\w*)[^.;\n]*[.;]?/gi, '')
+    .replace(/\bno\s+grid\s+cells?\s+(?:is|are)\s+wasted\b/gi, 'every area is intentional')
+    .replace(/\b\d\s*[x×]\s*\d\s+grid\b/gi, 'composition')  // 3x3 grid → composition
+    .replace(/\b(?:thirds?|3\s*[x×]\s*3)[- ]?grid\b/gi, 'composition')
+    .replace(/\bgrid\s+cells?\b/gi, 'areas')
+    .replace(/\bgrid\b/gi, 'layout')                        // 残余 grid → layout
+    .replace(/\b\d\s*[x×]\s*\d\b/g, '')                      // 残余 3x3
+    .replace(/\(\s*(?:to|through|–|—|-|至|到|,|，)*\s*\)/gi, '')  // 空壳括号 ( to ) ( )
+    .replace(/（\s*(?:至|到|,|，)*\s*）/g, '')                // 中文空壳括号
+    .replace(/[ \t]*([，,；;。.])/g, '$1')                   // 标点前空格
+    .replace(/([，,；;])\s*(?=[，,；;])/g, '')               // 连续标点
+    .replace(/[ \t]{2,}/g, ' ')                              // 多空格
+    .trim();
+}
+for (const c of candidates) c.image_prompt = sanitizeImagePrompt(c.image_prompt);
+
 // 每个候选的输出路径：单候选用原名，多候选加序号后缀
 function variantPath(base, i) {
   if (candidates.length === 1) return base;

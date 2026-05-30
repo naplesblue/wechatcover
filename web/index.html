@@ -1119,6 +1119,7 @@
   .essay-toggle input { width: 16px; height: 16px; accent-color: var(--ink); cursor: pointer; }
   .char-pick { margin: 6px 0 0 24px; font-size: 12px; color: var(--text-secondary); }
   .char-pick select { padding: 3px 6px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary); font-family: inherit; }
+  .char-hint { margin: 4px 0 0 24px; font-size: 11px; color: var(--accent); }
 
   /* 左栏分步标题 */
   .step-title { font-size: 13px; font-weight: 700; color: var(--text-primary); margin: 20px 0 10px; display: flex; align-items: baseline; gap: 8px; }
@@ -1248,6 +1249,7 @@
           <div class="char-pick" id="charPick" hidden>
             参考图 <select id="ipImage"></select>
           </div>
+          <p class="char-hint" id="charHint" hidden>IP 参考图仅 OpenAI 支持，出图后端已自动锁定为 OpenAI。</p>
         </div>
 
         <!-- 极客设置 accordion -->
@@ -1491,6 +1493,7 @@ const IMAGE_MODELS = { openai: ['gpt-image-2', 'gpt-image-1'], qwen: ['qwen-imag
 const KEY_LABEL = { OPENAI_API_KEY: 'OpenAI', DEEPSEEK_API_KEY: 'DeepSeek', DASHSCOPE_API_KEY: 'DashScope' };
 let lastCovers = [];
 let lastLayouts = [];  // 「先看构图」的方案（含锁定的 image_prompt），供「按此构图出图」复用
+let lastIpImage = '';  // 先看构图时用的 IP 参考图文件名，按此构图出图时一并带上（否则丢 IP 画风）
 
 // 中央 key 存储（按 key 名）；艺术指导/生图 的 key 输入框都映射到这里
 let keysStore = { OPENAI_API_KEY: '', DEEPSEEK_API_KEY: '', DASHSCOPE_API_KEY: '' };
@@ -1584,7 +1587,20 @@ async function loadIpImages() {
 }
 // 参考图选择器仅在勾了角色时显示
 function updateCharState() {
-  $('charPick').hidden = !$('withCharacter').checked;
+  const on = $('withCharacter').checked;
+  $('charPick').hidden = !on;
+  // IP 参考图仅 OpenAI edits 端点支持 → 勾上时锁定出图后端为 OpenAI，禁掉 qwen
+  const provSel = $('provider');
+  const qwenOpt = [...provSel.options].find((o) => o.value === 'qwen');
+  if (on) {
+    if (provSel.value !== 'openai') { provSel.value = 'openai'; populateImageModels(); syncKeyInputs(); }
+    if (qwenOpt) qwenOpt.disabled = true;
+    provSel.title = 'IP 参考图仅 OpenAI 支持，已锁定为 OpenAI';
+  } else if (qwenOpt) {
+    qwenOpt.disabled = false;
+    provSel.title = '';
+  }
+  $('charHint').hidden = !on;
 }
 function keyReady(name) { return (keysStore[name] && keysStore[name].trim() !== '') || !!envKeys[name]; }
 function missingKeys(previewOnly) {
@@ -1741,6 +1757,7 @@ async function renderFromLayout(index, btn) {
         provider: $('provider').value,
         imageModel: $('imageModel').value,
         keys: { ...keysStore },
+        ipImage: lastIpImage,   // 带上先看构图时的参考图，延续 IP 画风
       });
       covers.push({ url: data.url, file: data.file, hook: c.hook, visual_concept: c.visual_concept, title_text: c.title_text, image_prompt: c.image_prompt });
     }
@@ -1783,6 +1800,8 @@ async function previewLayout() {
       ipImage: $('ipImage').value,
       previewOnly: true,
     });
+    // 记下本次构图用的 IP 参考图，供「按此构图出图」延续 IP 画风
+    lastIpImage = ($('withCharacter').checked && !$('charField').hidden) ? $('ipImage').value : '';
     stopStepLoader();
     statusEl.textContent = `规划 ${data.prompts.length} 个构图`;
     renderWireframes(data.prompts);
@@ -1877,6 +1896,8 @@ async function generate() {
       withCharacter: $('withCharacter').checked,
       ipImage: $('ipImage').value,
     });
+    // 记下本次用的 IP 参考图，供「重出」延续 IP 画风
+    lastIpImage = ($('withCharacter').checked && !$('charField').hidden) ? $('ipImage').value : '';
 
     stopStepLoader();
     statusEl.textContent = `成功生成 ${data.covers.length} 张`;
@@ -2008,6 +2029,7 @@ async function reroll(index, btn) {
       provider: $('provider').value,
       imageModel: $('imageModel').value,
       keys: { ...keysStore },
+      ipImage: lastIpImage,   // 重出也带上参考图，延续 IP 画风
     });
     const bust = data.url + '&t=' + Date.now();
     img.src = bust;

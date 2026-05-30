@@ -129,10 +129,11 @@ function runGenCover({ mdFile, preset, withCharacter, subtitle, variants, outBas
 }
 
 // 跑 render.mjs（同提示词重出，不重跑艺术指导）→ 返回新图片绝对路径
-function runRender({ promptFile, outBase, provider, env }) {
+function runRender({ promptFile, outBase, provider, env, ipImagePath }) {
   return new Promise((resolve, reject) => {
     const a = ['render.mjs', '--prompt-file', promptFile, '--out', outBase, '--size', '1920x816', '--quality', 'low'];
     if (provider) a.push('--provider', provider);
+    if (ipImagePath) a.push('--ip-image', ipImagePath);  // 「按此构图出图」也带上参考图，延续 IP 画风
     const ps = spawn('node', a, { cwd: ROOT, env: { ...process.env, ...(env || {}) } });
     let out = '', err = '';
     ps.stdout.on('data', (d) => { out += d; });
@@ -239,11 +240,12 @@ const server = http.createServer(async (req, res) => {
       if (prompt.length < 50) return sendJson(res, 400, { error: '提示词为空或过短' });
       const provider = ['openai', 'qwen'].includes(body.provider) ? body.provider : 'openai';
       const env = envFromBody(body, provider);
+      const ipImagePath = provider === 'openai' ? resolveIpImage(body.ipImage) : null;
       const ts = Date.now();
       const promptFile = path.join(WEB_DIR, `${ts}.prompt.txt`);
       fs.writeFileSync(promptFile, prompt, 'utf-8');
       const outBase = path.join(WEB_DIR, `${ts}.png`);
-      const p = await runRender({ promptFile, outBase, provider, env });
+      const p = await runRender({ promptFile, outBase, provider, env, ipImagePath });
       const base = path.basename(p);
       return sendJson(res, 200, { url: `/cover?f=${encodeURIComponent(base)}`, file: base });
     }
