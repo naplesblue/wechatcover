@@ -233,7 +233,7 @@ ${essayMode ? '\n**⚠️ 用户已手动选定 register = 感悟**：跳过 Ste
 2. 钩子与画面按 register 选手法（信息类=具体物体+可猜主题；情绪类=暗示情绪、可抽象、忌写实直述）
 3. 必须先按 Step 2.5 给出 layout：先想视觉层级再从 playbook 选 pattern，标注各元素落格、留白格、密度；标题区与焦点不抢同一格。image_prompt 的 COMPOSITION 段由 layout 翻译而来，体现 CANVAS UNITY（无飞地、无死区）
 4. image_prompt 的 STYLE 段照搬 brand_system 的「技法与质感」（按风格，不要默认 ink/水彩）；色板段显式列 hex + 占比
-5. image_prompt 的 NEGATIVE = 通用 AI 俗套黑名单 + 禁真品牌 logo + brand_system 的「风格专属 anti-slop」（照搬）
+5. image_prompt 的 NEGATIVE = 通用 AI 俗套黑名单 + 禁真品牌 logo + **禁编造数据**（图上的数字/比例/版本号只能用文章真有的，没真数就用非数字的"数据感"，不要凭空造 92%/8x 之类）+ brand_system 的「风格专属 anti-slop」（照搬）
 6. title_text 始终输出（作文章标题用）；但**情绪语域**时 image_prompt 的 TEXT IN IMAGE **不在图上渲染标题**（纯氛围图，标题交给文章标题），仅**信息语域**才在图上渲染大标题
 7. ${subtitleNote}
 8. 只输出 JSON，不要 markdown 代码块标记，不要解释${characterExtra}${variantsNote}`;

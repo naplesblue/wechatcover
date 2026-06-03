@@ -67,6 +67,15 @@
   - 通过性测试：朋友看完能否**感到对的情绪氛围**？(无需猜出主题)
   - 错误案例：散文文章里出现具体角色或情节复刻——那就退回情绪类了，丢了"纯"。
 
+### ⚠️ 数据真实性（硬规则，所有语域通用）
+
+**画面上出现的具体数字 / 数据 / 比例 / 版本号 / 指标，必须来自文章本身，不准编造。**
+
+- 文章里有的数字才用（如「2000 字→200 字」「2000 亿美金」是文章真有的，可上）。
+- 文章里**没有**的具体数值——**不要为了"像 dashboard"凭空造**（如随手编个「准确率 92%」「效率 +8x」「转化率 6%」）。读者会当真，编造数据是硬伤。
+- 需要"数据感"又没有真数时：用**非具体**表达（一条上升曲线、一个进度环、一堆纸的厚薄对比），**不标具体数字**；或者干脆不放数据元素。
+- title_text 里的数字同理：只能是文章真有的。
+
 ### 正反例（信息类）
 
 | 钩子 | ❌ 失败画面 | ✅ 成功画面 |
@@ -269,8 +278,12 @@ NEGATIVE:
 - NO chrome/metallic AI face
 - NO binary code rain
 - NO generic "tech blue" gradient
-(2) Always (safety):
+(2) Always (safety + integrity):
 - NO real-world brand logos or trademarks (commercial use risk)
+- NO invented numbers / data / percentages / metrics / version numbers that are NOT in the
+  source article. Any number shown must come from the article. If a "data feel" is wanted
+  without real numbers, use non-numeric devices (a rising curve, a progress ring, thick-vs-thin
+  paper stacks) — do NOT print fabricated figures.
 (3) Then copy the brand system's 风格专属 anti-slop section VERBATIM
     — the style-specific things THIS style must avoid (incl. its photorealism stance).
 ```
@@ -309,6 +322,8 @@ CHARACTER 段：
 - [ ] image_prompt 的 COMPOSITION 段由 layout 翻译而来（含具体落位 + 留白区）
 - [ ] title_text 是 6-10 个中文字符
 - [ ] subtitle_text 符合调用方要求（默认空，或指定的网址/日期格式）
+- [ ] **数据真实性**：图上 / 标题里出现的具体数字 / 数据 / 比例 / 版本号都来自文章，**没有编造**（没真数就用非数字的"数据感"表达）
+- [ ] **质量闸门**：把成图想象成在信息流里——**会有人停下来多看一眼吗？** 不会就说明它不够，回去加强（不是更花哨，是更对、更有张力）
 
 任何一条不过：回到对应 Step 重写。
 
