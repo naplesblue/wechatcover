@@ -1955,6 +1955,21 @@ async function renderWechatNow() {
 }
 function scheduleRender() { clearTimeout(renderTimer); renderTimer = setTimeout(renderWechatNow, 350); }
 
+// 排版工作台左右滚动联动：任一侧滚动，另一侧按比例同步（带锁防回环）
+let scrollSyncing = false;
+function bindScrollSync(a, b) {
+  const sync = (from, to) => {
+    if (scrollSyncing) return;
+    const fromMax = from.scrollHeight - from.clientHeight;
+    if (fromMax <= 0) return;
+    scrollSyncing = true;
+    to.scrollTop = (from.scrollTop / fromMax) * (to.scrollHeight - to.clientHeight);
+    requestAnimationFrame(() => { scrollSyncing = false; });
+  };
+  a.addEventListener('scroll', () => sync(a, b), { passive: true });
+  b.addEventListener('scroll', () => sync(b, a), { passive: true });
+}
+
 // ── 主题模式管理 ──
 let activeTheme = 'light';
 function initTheme() {
@@ -2000,6 +2015,7 @@ $('prompts').addEventListener('click', (e) => {
   }
 });
 $('wechatBtn').addEventListener('click', openWechat);
+bindScrollSync($('wechatSrc'), $('wechatPreview'));  // 排版工作台左右滚动联动
 $('wechatClose').addEventListener('click', closeWechat);
 $('wechatSrc').addEventListener('input', scheduleRender);
 $('themeToggle').addEventListener('click', toggleTheme);
