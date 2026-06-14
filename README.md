@@ -103,7 +103,7 @@ node gen_cover.mjs --from-text examples/sample_bear_article.md --out covers/my-c
 不想敲命令？起一个本地网页，粘贴文章就出图（适合从 Bear / 备忘录直接复制正文，无需导出 .md）。
 
 ```bash
-node server.mjs        # 然后打开 http://localhost:8787
+npm start              # 然后打开 http://localhost:8787（等同 node server.mjs）
 ```
 
 - 粘贴 Markdown（第一行 `# 标题`）→ 选风格（出图后端、模型、API Key 都在「设置」里）→ 出封面。三个入口：

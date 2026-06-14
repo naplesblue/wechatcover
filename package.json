@@ -7,8 +7,9 @@
     "gen-cover": "./gen_cover.mjs"
   },
   "scripts": {
-    "cover": "node gen_cover.mjs",
-    "serve": "node server.mjs"
+    "start": "node server.mjs",
+    "serve": "node server.mjs",
+    "cover": "node gen_cover.mjs"
   },
   "engines": {
     "node": ">=18"
