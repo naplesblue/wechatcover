@@ -77,6 +77,14 @@ function readBody(req) {
   });
 }
 
+// 从子进程 stderr 里挑出最有用的错误行：优先含 [FATAL]/[ERROR] 的那行（去掉前缀），
+// 否则退回最后几行。避免把巨型 JSON dump 的尾巴当错误信息（用户看到一坨没头没尾的 JSON）。
+function pickErr(err, code, label) {
+  const lines = err.trim().split('\n').filter(Boolean);
+  const fatal = [...lines].reverse().find((l) => /\[(FATAL|ERROR)\]/.test(l));
+  return (fatal || lines.slice(-3).join(' ') || `${label} 退出码 ${code}`).replace(/^\s*\[(FATAL|ERROR)\]\s*/, '');
+}
+
 function brandSystemPath(preset) {
   if (!preset || preset === 'default' || !safePresetName(preset)) return path.join(ROOT, 'brand_system.md');
   for (const dir of PRESET_DIRS) {
@@ -120,7 +128,7 @@ function runGenCover({ mdFile, preset, withCharacter, subtitle, variants, outBas
     ps.stdout.on('data', (d) => { out += d; });
     ps.stderr.on('data', (d) => { err += d; process.stderr.write(d); });
     ps.on('close', (code) => {
-      if (code !== 0) return reject(new Error(err.trim().split('\n').slice(-3).join(' ') || `gen_cover 退出码 ${code}`));
+      if (code !== 0) return reject(new Error(pickErr(err, code, 'gen_cover')));
       const paths = out.trim().split('\n').filter(Boolean);
       resolve(paths);
     });
@@ -139,7 +147,7 @@ function runRender({ promptFile, outBase, provider, env, ipImagePath }) {
     ps.stdout.on('data', (d) => { out += d; });
     ps.stderr.on('data', (d) => { err += d; process.stderr.write(d); });
     ps.on('close', (code) => {
-      if (code !== 0) return reject(new Error(err.trim().split('\n').slice(-3).join(' ') || `render 退出码 ${code}`));
+      if (code !== 0) return reject(new Error(pickErr(err, code, 'render')));
       const p = out.trim().split('\n').filter(Boolean).pop();
       if (!p) return reject(new Error('render 未返回图片路径'));
       resolve(p);

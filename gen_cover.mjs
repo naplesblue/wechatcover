@@ -267,8 +267,7 @@ function layoutErrors(c) {
 }
 
 const maxTokens = Math.max(6000, 4500 * variants);
-const LAYOUT_MAX_RETRIES = 2;            // 版式坐标硬错最多重出次数
-const requiredFields = ['hook', 'visual_concept', 'title_text', 'image_prompt', 'layout'];
+const LAYOUT_MAX_RETRIES = 2;            // 版式坐标 / image_prompt 缺失最多重出次数
 let candidates;
 let layoutFix = '';                      // 重出时追加的坐标纠正提示（仅修语法，不限创意）
 for (let attempt = 0; ; attempt++) {
@@ -312,30 +311,38 @@ for (let attempt = 0; ; attempt++) {
     if (candidates.length < variants) console.error(`[WARN] 只返回了 ${candidates.length}/${variants} 个候选`);
   }
 
-  // 必填字段缺失 = 结构性问题，直接 fatal（不重试）
-  for (const [i, c] of candidates.entries()) {
-    for (const f of requiredFields) {
-      if (!c[f]) {
-        console.error(`[FATAL] 候选 ${i + 1} 缺字段: ${f}`);
-        console.error(JSON.stringify(c, null, 2));
-        process.exit(1);
-      }
-    }
+  // 软字段缺失 → 兜底填默认，不崩（title_text 在情绪/感悟语域本就不渲染，返空是正常的；
+  // hook/visual_concept 只是信息字段。唯一硬需求是 image_prompt——没它没法出图）
+  for (const c of candidates) {
+    if (!c.title_text) c.title_text = cs.title;
+    if (!c.hook) c.hook = '';
+    if (!c.visual_concept) c.visual_concept = '';
     if (typeof c.subtitle_text !== 'string') c.subtitle_text = finalSubtitle;
-    if (c.image_prompt.length < 1500) console.error(`[WARN] 候选 ${i + 1} image_prompt 仅 ${c.image_prompt.length} 字符，可能不完整`);
   }
 
-  // 版式坐标兜底：有硬错就带着具体错误重出
+  // image_prompt 缺失/过短（多为输出截断）+ 版式坐标硬错 → 都走重试
+  const promptBad = candidates.map((c, i) => (!c.image_prompt || c.image_prompt.length < 1500) ? i : -1).filter((i) => i >= 0);
   const errsPerCand = candidates.map(layoutErrors);
-  const bad = errsPerCand.map((e, i) => (e.length ? i : -1)).filter((i) => i >= 0);
-  if (bad.length === 0) break;  // 全部通过
-  const detail = bad.map((i) => `候选 ${i + 1}（${errsPerCand[i].join('；')}）`).join('，');
+  const layoutBad = errsPerCand.map((e, i) => (e.length ? i : -1)).filter((i) => i >= 0);
+  if (promptBad.length === 0 && layoutBad.length === 0) break;  // 全部通过
+
+  const reasons = [];
+  if (promptBad.length) reasons.push(`候选 ${promptBad.map((i) => i + 1).join('/')} 的 image_prompt 缺失或过短`);
+  if (layoutBad.length) reasons.push(layoutBad.map((i) => `候选 ${i + 1}（${errsPerCand[i].join('；')}）`).join('，'));
+  const detail = reasons.join('；');
+
   if (attempt >= LAYOUT_MAX_RETRIES) {
+    if (promptBad.length) {  // image_prompt 缺是硬伤，重试用尽仍无 → 明确报错（不 dump 整段 JSON）
+      console.error(`[FATAL] 重试 ${LAYOUT_MAX_RETRIES} 次后 image_prompt 仍缺失或过短（多为输出被截断）。可重试，或换更稳的艺术指导模型。`);
+      process.exit(1);
+    }
     console.error(`[WARN] 版式坐标仍有硬错（已重出 ${LAYOUT_MAX_RETRIES} 次），保留当前结果继续：${detail}`);
-    break;  // 优雅降级，不阻断
+    break;  // 仅 layout 软降级，不阻断
   }
-  console.error(`[LAYOUT] 版式坐标硬错，重出（${attempt + 1}/${LAYOUT_MAX_RETRIES}）：${detail}`);
-  layoutFix = `\n\n【重要修正】上次 layout 含非法坐标（${detail}）。坐标只能是 列 L/C/R 与 行 T/M/B 的组合（单格如 C-M，区间如 L-T..R-B）；底部整行 = L-B..R-B，顶部整行 = L-T..R-T。请重新输出全部候选，确保每个 zone 和 focal_point 都是合法坐标。`;
+  console.error(`[RETRY] 候选有问题，重出（${attempt + 1}/${LAYOUT_MAX_RETRIES}）：${detail}`);
+  layoutFix = layoutBad.length
+    ? `\n\n【重要修正】上次 layout 含非法坐标（${detail}）。坐标只能是 列 L/C/R 与 行 T/M/B 的组合（单格如 C-M，区间如 L-T..R-B）；底部整行 = L-B..R-B，顶部整行 = L-T..R-T。请重新输出全部候选，确保每个 zone 和 focal_point 都是合法坐标。`
+    : '';
 }
 
 // 清洗 image_prompt：把"网格脚手架"从送给图像模型的提示词里抹掉。
