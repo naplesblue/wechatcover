@@ -93,12 +93,18 @@
 
   /* 顶部导航栏 */
   .app-header {
+    position: sticky;
+    top: 0;
+    z-index: 30;                 /* 低于所有 modal(50/60/70)，高于页面内容 */
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 24px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid var(--border-color);
+    margin: 0 -20px 24px;        /* 横向铺满到 .wrap 内容边缘 */
+    padding: 14px 20px;
+    background: var(--glass-bg);  /* Apple 玻璃：仅 sticky nav / overlay 用 */
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    border-bottom: 1px solid var(--glass-border);
   }
   .brand {
     display: flex;
@@ -152,20 +158,22 @@
     .workspace-grid { grid-template-columns: 1fr; }
   }
 
-  /* 通用卡片容器 */
-  .card { 
-    border: 1px solid var(--border-color); 
-    border-radius: var(--radius-lg); 
-    background: var(--bg-card); 
+  /* 通用卡片容器 —— Apple：白面靠阴影浮起，不靠边框 */
+  .card {
+    border: 1px solid transparent;   /* 浅色无边框（纯阴影）；深色下方补 hairline */
+    border-radius: var(--radius-lg);
+    background: var(--bg-card);
     padding: 24px;
-    box-shadow: var(--shadow-sm); 
-    display: flex; 
-    flex-direction: column; 
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
     transition: var(--transition);
   }
   .card:hover {
     box-shadow: var(--shadow-md);
   }
+  /* 深色：黑底阴影不可见，用 hairline 描边给出层次 */
+  .dark-theme .card { border-color: var(--border-color); }
   .card-header {
     display: flex;
     justify-content: space-between;
@@ -201,11 +209,11 @@
     position: relative;
     margin-bottom: 20px;
   }
-  textarea#md { 
-    width: 100%; 
-    min-height: 240px; 
-    padding: 16px; 
-    border: 1.5px solid var(--border-color); 
+  textarea#md {
+    width: 100%;
+    min-height: 240px;
+    padding: 16px;
+    border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
     background: var(--bg-input); 
     font-size: 14px; 
@@ -262,11 +270,11 @@
     pointer-events: none;
     transition: var(--transition);
   }
-  select, input[type=text], input[type=password] { 
+  select, input[type=text], input[type=password] {
     width: 100%;
-    padding: 9px 12px; 
-    border: 1.5px solid var(--border-color); 
-    border-radius: var(--radius-sm); 
+    padding: 9px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
     background: var(--bg-input);
     font-size: 14px; 
     font-family: inherit; 
