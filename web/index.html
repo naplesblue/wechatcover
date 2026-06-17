@@ -5,60 +5,62 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>wechatcover · 智能公众号封面舱</title>
 <style>
-  /* 基础设计变量与主题 */
+  /* 基础设计变量与主题 —— Apple Liquid Glass 设计系统 */
   :root {
-    --font-sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
+    --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
     --font-serif: "Songti SC", "Noto Serif SC", "STSong", "SimSun", Georgia, serif;
-    --font-mono: "SF Mono", Menlo, Consolas, "Courier New", monospace;
-    --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    
-    --radius-lg: 16px;
-    --radius-md: 12px;
-    --radius-sm: 8px;
-    
-    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
-    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
-    --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.12);
+    --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Courier New", monospace;
+    --transition: all 0.22s cubic-bezier(0.25, 0.1, 0.25, 1);
+
+    /* Apple 圆角语义层级 */
+    --radius-lg: 18px;  /* card */
+    --radius-md: 12px;  /* thumb */
+    --radius-sm: 10px;
+
+    /* Apple 两层阴影（紧贴接触 + 柔和扩散，绝不单层硬阴影） */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 1px 3px rgba(0, 0, 0, 0.05), 0 14px 40px rgba(0, 0, 0, 0.05);
+    --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.1);
   }
 
-  /* Light Theme - Classic Paper */
+  /* Light Theme — Apple 冷灰底 + 纯白面 */
   .light-theme {
-    --bg-primary: #F8F6F0; /* 极温和暖纸色 */
+    --bg-primary: #F5F5F7; /* 冷灰白底，绝不暖奶油 */
     --bg-card: #FFFFFF;
-    --bg-input: #FCFAF6;
-    --border-color: #E8E3D7;
-    --border-focus: #1B4965;
-    
-    --text-primary: #2C2B29;
-    --text-secondary: #706B60;
-    --text-muted: #A09A8E;
-    
-    --ink: #1B4965;
-    --accent: #E07A5F;
-    --accent-glow: rgba(224, 122, 95, 0.15);
-    
-    --glass-bg: rgba(255, 255, 255, 0.85);
-    --glass-border: rgba(232, 227, 215, 0.8);
+    --bg-input: #F5F5F7;
+    --border-color: rgba(0, 0, 0, 0.08); /* hairline 分隔线 */
+    --border-focus: #0071E3;
+
+    --text-primary: #1D1D1F;
+    --text-secondary: #6E6E73;
+    --text-muted: #86868B;
+
+    --ink: #0071E3;   /* Apple 蓝：主操作 / 链接 / 焦点 */
+    --accent: #0071E3; /* 单一强调色，正文保持灰阶 */
+    --accent-glow: rgba(0, 113, 227, 0.12);
+
+    --glass-bg: rgba(245, 245, 247, 0.72); /* 仅 nav/overlay 用 */
+    --glass-border: rgba(0, 0, 0, 0.07);
   }
 
-  /* Dark Theme - Obsidian Dark */
+  /* Dark Theme — Apple 深色 */
   .dark-theme {
-    --bg-primary: #0A0D16; /* 深邃夜空黑蓝 */
-    --bg-card: #121824;
-    --bg-input: #192132;
-    --border-color: #242E42;
-    --border-focus: #38BDF8;
-    
-    --text-primary: #F1F5F9;
-    --text-secondary: #94A3B8;
-    --text-muted: #64748B;
-    
-    --ink: #38BDF8; /* 极客酷蓝 */
-    --accent: #FF7A59; /* 精准明亮珊瑚橙 */
-    --accent-glow: rgba(255, 122, 89, 0.15);
-    
-    --glass-bg: rgba(18, 24, 36, 0.8);
-    --glass-border: rgba(36, 46, 66, 0.8);
+    --bg-primary: #000000;
+    --bg-card: #1C1C1E;
+    --bg-input: #2C2C2E;
+    --border-color: rgba(255, 255, 255, 0.12);
+    --border-focus: #0A84FF;
+
+    --text-primary: #F5F5F7;
+    --text-secondary: #98989D;
+    --text-muted: #6E6E73;
+
+    --ink: #0A84FF;   /* 深色下更亮的 Apple 蓝 */
+    --accent: #0A84FF;
+    --accent-glow: rgba(10, 132, 255, 0.18);
+
+    --glass-bg: rgba(0, 0, 0, 0.6);
+    --glass-border: rgba(255, 255, 255, 0.1);
   }
 
   /* 重置 & 全局样式 */
@@ -96,7 +98,7 @@
     align-items: center;
     margin-bottom: 24px;
     padding-bottom: 16px;
-    border-bottom: 1.5px dashed var(--border-color);
+    border-bottom: 1px solid var(--border-color);
   }
   .brand {
     display: flex;
@@ -121,7 +123,7 @@
   .brand h1 { 
     margin: 0; 
     font-size: 20px; 
-    font-weight: 800; 
+    font-weight: 700; 
     letter-spacing: -0.5px;
     color: var(--text-primary);
   }
@@ -481,7 +483,7 @@
   .empty-state h4 {
     margin: 0 0 8px;
     font-size: 18px;
-    font-weight: 800;
+    font-weight: 700;
     color: var(--text-primary);
   }
   .empty-state p {
@@ -810,7 +812,7 @@
     transform: translateY(0);
   }
   .status-msg.success { color: #52B788; }
-  .status-msg.error { color: #E07A5F; }
+  .status-msg.error { color: #FF3B30; }
 
   /* ========================================================
      微信沉浸式排版工作台
@@ -830,12 +832,12 @@
     align-items: center; 
     gap: 16px; 
     padding: 12px 24px; 
-    border-bottom: 1.5px dashed var(--border-color); 
+    border-bottom: 1px solid var(--border-color); 
     background: var(--bg-card); 
   }
   .modal-title { 
     font-size: 16px; 
-    font-weight: 800; 
+    font-weight: 700; 
     color: var(--text-primary); 
     display: flex;
     align-items: center;
@@ -852,7 +854,7 @@
     flex: 1.1; 
     min-width: 0; 
     border: none; 
-    border-right: 1.5px dashed var(--border-color); 
+    border-right: 1px solid var(--border-color); 
     padding: 24px;
     font-size: 14px; 
     line-height: 1.8; 
@@ -989,8 +991,8 @@
     width: 24px;
     height: 24px;
     border-radius: 50%;
-    background: #E8E3D7;
-    color: #706B60;
+    background: #E8E8ED;
+    color: #6E6E73;
     font-size: 10px;
     font-weight: 700;
     display: flex;
@@ -1000,7 +1002,7 @@
   .author-name {
     font-size: 13px;
     font-weight: 700;
-    color: #2C2B29;
+    color: #1D1D1F;
   }
   .interaction-icons {
     display: flex;
@@ -1036,7 +1038,7 @@
   
   @media (max-width: 768px) { 
     .modal-body { flex-direction: column; } 
-    .pane-src { border-right: none; border-bottom: 1.5px dashed var(--border-color); flex: 1; }
+    .pane-src { border-right: none; border-bottom: 1px solid var(--border-color); flex: 1; }
     .phone-mockup-wrapper { padding: 16px; flex: 1.2; }
     .phone-mockup { width: 100%; height: auto; flex: 1; min-height: 480px; }
   }
@@ -1078,9 +1080,9 @@
     border: 2px solid var(--accent);
     color: var(--accent); 
     font-size: 24px; 
-    font-weight: 800; 
+    font-weight: 700; 
   }
-  .popup h3 { margin: 0 0 10px; color: var(--text-primary); font-size: 18px; font-weight: 800; }
+  .popup h3 { margin: 0 0 10px; color: var(--text-primary); font-size: 18px; font-weight: 700; }
   .popup p { margin: 0 0 24px; color: var(--text-secondary); font-size: 13px; line-height: 1.6; }
   .popup .acts { display: flex; gap: 12px; justify-content: center; }
   
@@ -1818,7 +1820,7 @@ async function previewLayout() {
     $('emptyState').classList.remove('hidden');
     const errDiv = document.createElement('div');
     errDiv.className = 'covers-empty';
-    errDiv.style.cssText = 'color:#E07A5F;border:1px solid var(--border-color);padding:30px;border-radius:12px;text-align:center;font-size:13px';
+    errDiv.style.cssText = 'color:#FF3B30;border:1px solid var(--border-color);padding:30px;border-radius:12px;text-align:center;font-size:13px';
     errDiv.innerHTML = `⚠️ <b>出错信息：</b>${esc(e.message)}`;
     $('covers').appendChild(errDiv);
   } finally {
@@ -1919,7 +1921,7 @@ async function generate() {
     // 使用简洁的错误气泡弹窗或在 covers 显示错误
     const errDiv = document.createElement('div');
     errDiv.className = 'covers-empty';
-    errDiv.style.color = '#E07A5F';
+    errDiv.style.color = '#FF3B30';
     errDiv.style.border = '1px solid var(--border-color)';
     errDiv.style.padding = '30px';
     errDiv.style.borderRadius = '12px';
