@@ -1,0 +1,67 @@
+/**
+ * wechat_render 列表渲染测试 — node --test tests/wechat_render.test.mjs
+ *
+ * fixture 取自真实失败样本：文章正文用字面 bullet 字符（•）+ 缩进子条目，
+ * 微信预览里整块列表被挤成一段。
+ */
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { renderWechatHtml } from '../lib/wechat_render.mjs';
+
+// 截图里的失败样本（节选，含深缩进嵌套子条目）
+const literalBulletSource = `桥接器功能描述：
+• 定位: 本地 MCP 桥 + 路由 skill, 不是替换当前会话模型, 而是「第二通道 / 外包通道」。
+• 宿主: 已在 Claude Code 跑通; 同样可用于 OpenAI Codex 等能挂 MCP 的环境。
+• 核心能力
+        • 只读提问与仓库说明
+        • 基于 Git 上下文的代码审查
+• 安全默认
+        • 写模式双闸: 环境允许 + 单次显式 write
+• 前提: Node.js、已安装并登录的 Grok Build CLI、支持 MCP 的编码助手。`;
+
+test('字面 • 列表：每个条目独立成块，不挤在同一段', () => {
+  const html = renderWechatHtml(literalBulletSource);
+  // 条目各自独立 —— 两个条目的文字不能出现在同一文本块里
+  const textBlocks = html.split(/<[^>]+>/).filter(s => s.trim());
+  for (const block of textBlocks) {
+    assert.ok(!(block.includes('定位') && block.includes('宿主')),
+      `「定位」「宿主」两个条目被挤进同一文本块: ${block.slice(0, 120)}`);
+    assert.ok(!(block.includes('只读提问') && block.includes('代码审查')),
+      `嵌套子条目被挤进同一文本块: ${block.slice(0, 120)}`);
+  }
+  // 每个条目渲染为独立 <section>
+  assert.match(html, /<section[^>]*>•\s*定位/, '「定位」应为独立 bullet section');
+  assert.match(html, /<section[^>]*>•\s*宿主/, '「宿主」应为独立 bullet section');
+});
+
+test('字面 • 深缩进子条目：不被误判为 code block，无嵌套残留碎片', () => {
+  const html = renderWechatHtml(literalBulletSource);
+  assert.ok(!html.includes('<pre'), '深缩进子条目被误判成 code block');
+  assert.ok(!html.includes('<code'), '深缩进子条目被误判成 code block');
+  assert.ok(!/<\/li>|<\/ul>|<\/ol>|<li|<ul|<ol/.test(html),
+    '输出不应残留任何 ul/ol/li 标签（应全部展开为 section）');
+  assert.ok(html.includes('只读提问与仓库说明'), '子条目内容丢失');
+});
+
+test('标准 markdown 嵌套列表：展开后无碎片、子条目保留', () => {
+  const html = renderWechatHtml(`- 外层一\n  - 内层甲\n  - 内层乙\n- 外层二`);
+  assert.ok(!/<\/li>|<\/ul>|<li|<ul/.test(html), '嵌套 ul 展开残留碎片');
+  for (const t of ['外层一', '内层甲', '内层乙', '外层二']) {
+    assert.ok(html.includes(t), `条目「${t}」丢失`);
+  }
+});
+
+test('不回归：标准无序/有序列表、段落、标题', () => {
+  const html = renderWechatHtml(`## 小标题\n\n普通段落。\n\n- 甲\n- 乙\n\n1. 一\n2. 二`);
+  assert.match(html, /<h2[^>]*>[^<]*小标题/);
+  assert.match(html, /<section[^>]*>•\s*甲/);
+  assert.match(html, /<section[^>]*>•\s*乙/);
+  assert.match(html, /<section[^>]*>1\.\s*一/);
+  assert.match(html, /<section[^>]*>2\.\s*二/);
+  assert.ok(html.includes('普通段落'));
+});
+
+test('不回归：正文中间的 • 字符不被误改', () => {
+  const html = renderWechatHtml('这句话里有个 • 符号在中间。');
+  assert.ok(html.includes('这句话里有个 • 符号在中间。'));
+});
