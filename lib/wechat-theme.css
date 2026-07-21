@@ -3,6 +3,9 @@
  *
  * 移植自 doocs/md default 主题，配色改为本项目品牌（深海蓝 #1B4965 + 砖橘 #E07A5F）。
  * 所有值固定（微信不支持 var()），经 juice 内联后可直接粘进公众号编辑器。
+ *
+ * 水平缩进只留一层：由最外层 section 的 padding 承担（见 wechat_render.mjs 内联），
+ * 子块 margin 水平一律 0，避免「section 8px + 元素 8px」双层内缩。
  */
 
 section {
@@ -10,30 +13,30 @@ section {
   font-size: 17px;
   line-height: 1.75;
   text-align: left;
-  color: #2b2a26;
-  padding: 0 8px;
+  color: #333;
 }
 
 p {
-  margin: 1.5em 8px;
-  letter-spacing: 0.05em;
+  margin: 1em 0;
+  letter-spacing: 0.02em;
   font-size: inherit;
   color: #333;
-  word-break: break-all;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 h1 {
   font-size: 1.4em;
   text-align: center;
   font-weight: bold;
-  margin: 1em auto 0.5em;
+  margin: 1em auto 0.75em;
   color: #1B4965;
 }
 
 h2 {
   font-size: 1.2em;
   font-weight: bold;
-  margin: 2em 8px 0.75em;
+  margin: 1.7em 0 0.55em;
   padding-left: 8px;
   border-left: 4px solid #E07A5F;
   color: #1B4965;
@@ -42,21 +45,21 @@ h2 {
 h3 {
   font-size: 1.1em;
   font-weight: bold;
-  margin: 1.5em 8px 0.5em;
+  margin: 1.5em 0 0.5em;
   color: #1B4965;
 }
 
 h4, h5, h6 {
   font-size: 1em;
   font-weight: bold;
-  margin: 1.2em 8px 0.5em;
+  margin: 1.2em 0 0.5em;
   color: #333;
 }
 
 blockquote {
   border-left: 4px solid #1B4965;
   padding: 1px 0 1px 12px;
-  margin: 1.5em 8px;
+  margin: 1em 0;
   background: #FAF3DD;
   color: #5a5750;
   font-size: 0.95em;
@@ -68,39 +71,39 @@ blockquote p {
 }
 
 ol {
-  margin: 1em 8px;
+  margin: 1em 0;
   padding-left: 28px;
   list-style-type: decimal;
   color: #333;
 }
 
 ol li {
-  margin: 0.5em 0;
+  margin: 0.4em 0;
   padding-left: 4px;
   color: #333;
 }
 
 ul {
-  margin: 1em 8px;
+  margin: 1em 0;
   padding-left: 28px;
   list-style-type: disc;
   color: #333;
 }
 
 ul li {
-  margin: 0.5em 0;
+  margin: 0.4em 0;
   padding-left: 4px;
   color: #333;
 }
 
 p.footnotes {
-  margin: 0.5em 8px;
+  margin: 0.5em 0;
   font-size: 80%;
   color: #333;
 }
 
 figure {
-  margin: 1.5em 8px;
+  margin: 1em 0;
   color: #333;
 }
 
@@ -115,7 +118,7 @@ hr {
   border-width: 1px 0 0;
   border-color: #e0d9c8;
   height: 0;
-  margin: 1.5em 0;
+  margin: 1em 0;
 }
 
 code {
@@ -128,7 +131,7 @@ code {
 }
 
 pre {
-  margin: 1em 8px;
+  margin: 1em 0;
   border-radius: 8px;
   background: #f6f4ec;
   overflow-x: auto;
@@ -165,7 +168,7 @@ strong {
 
 table {
   border-collapse: collapse;
-  margin: 1.5em 8px;
+  margin: 1em 0;
   width: 100%;
   color: #333;
 }

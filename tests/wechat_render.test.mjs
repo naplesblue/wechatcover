@@ -29,9 +29,9 @@ test('字面 • 列表：每个条目独立成块，不挤在同一段', () => 
     assert.ok(!(block.includes('只读提问') && block.includes('代码审查')),
       `嵌套子条目被挤进同一文本块: ${block.slice(0, 120)}`);
   }
-  // 每个条目渲染为独立 <section>
-  assert.match(html, /<section[^>]*>•\s*定位/, '「定位」应为独立 bullet section');
-  assert.match(html, /<section[^>]*>•\s*宿主/, '「宿主」应为独立 bullet section');
+  // 每个条目渲染为独立 <section>（bullet 在灰色 span 内）
+  assert.match(html, /•<\/span>\s*定位/, '「定位」应为独立 bullet section');
+  assert.match(html, /•<\/span>\s*宿主/, '「宿主」应为独立 bullet section');
 });
 
 test('字面 • 深缩进子条目：不被误判为 code block，无嵌套残留碎片', () => {
@@ -54,14 +54,29 @@ test('标准 markdown 嵌套列表：展开后无碎片、子条目保留', () =
 test('不回归：标准无序/有序列表、段落、标题', () => {
   const html = renderWechatHtml(`## 小标题\n\n普通段落。\n\n- 甲\n- 乙\n\n1. 一\n2. 二`);
   assert.match(html, /<h2[^>]*>[^<]*小标题/);
-  assert.match(html, /<section[^>]*>•\s*甲/);
-  assert.match(html, /<section[^>]*>•\s*乙/);
-  assert.match(html, /<section[^>]*>1\.\s*一/);
-  assert.match(html, /<section[^>]*>2\.\s*二/);
+  assert.match(html, /•<\/span>\s*甲/);
+  assert.match(html, /•<\/span>\s*乙/);
+  assert.match(html, /1\.<\/span>\s*一/);
+  assert.match(html, /2\.<\/span>\s*二/);
   assert.ok(html.includes('普通段落'));
 });
 
 test('不回归：正文中间的 • 字符不被误改', () => {
   const html = renderWechatHtml('这句话里有个 • 符号在中间。');
   assert.ok(html.includes('这句话里有个 • 符号在中间。'));
+});
+
+test('阅读 token：段距/字距/断行、H2 节奏、列表间距与灰 bullet', () => {
+  const html = renderWechatHtml(`## 小标题\n\n普通段落 OpenAI。\n\n- 甲\n- 乙\n  - 子`);
+  assert.match(html, /margin:\s*1em\s+0/, '段落垂直约 1em、水平 0');
+  assert.match(html, /letter-spacing:\s*0\.02em/, '字距 0.02em');
+  assert.ok(!/word-break:\s*break-all/.test(html.match(/<p[^>]*>/)?.[0] || ''),
+    '段落不应 break-all');
+  assert.match(html, /margin:\s*1\.7em\s+0\s+0\.55em/, 'H2 上收下贴');
+  assert.match(html, /padding:\s*0\s+8px/, '水平缩进只在外层 section');
+  assert.match(html, /color:\s*#888[^"]*">•/, 'bullet 灰色');
+  // 顶层列表：首条上 1em、末条下 1em、条间 0.4em
+  assert.match(html, /margin:\s*1em\s+0\s+0\.4em\s+0px/, '顶层首条');
+  assert.match(html, /margin:\s*0\.4em\s+0\s+1em\s+0px/, '顶层末条');
+  assert.match(html, /margin:\s*0\.35em\s+0\s+0\.35em\s+16px/, '嵌套缩进 + 条间距');
 });
