@@ -77,12 +77,32 @@ function readBody(req) {
   });
 }
 
-// 从子进程 stderr 里挑出最有用的错误行：优先含 [FATAL]/[ERROR] 的那行（去掉前缀），
-// 否则退回最后几行。避免把巨型 JSON dump 的尾巴当错误信息（用户看到一坨没头没尾的 JSON）。
+// 从子进程 stderr 里挑出最有用的错误行。
+// 优先 [FATAL]/[ERROR]；其次 Node uncaught 的 "XxxError: msg"；
+// 再取非堆栈实质行。避免只剩 "at file://…:291" / "Node.js v…" 这种无信息尾巴。
 function pickErr(err, code, label) {
-  const lines = err.trim().split('\n').filter(Boolean);
+  const lines = (err || '').trim().split('\n').filter(Boolean);
+  const isNoise = (l) =>
+    /^\s*at\s+/.test(l) ||
+    /^Node\.js\b/.test(l) ||
+    /^\s*\^/.test(l) ||
+    /^file:\/\//.test(l) ||
+    /^\s*node:internal\//.test(l);
+  const stripTag = (l) => l.replace(/^\s*\[(FATAL|ERROR)\]\s*/, '');
+
   const fatal = [...lines].reverse().find((l) => /\[(FATAL|ERROR)\]/.test(l));
-  return (fatal || lines.slice(-3).join(' ') || `${label} 退出码 ${code}`).replace(/^\s*\[(FATAL|ERROR)\]\s*/, '');
+  if (fatal) return stripTag(fatal);
+
+  // uncaught：SyntaxError: … / Error: …
+  const named = [...lines].reverse().find(
+    (l) => !isNoise(l) && /^(?:[A-Za-z]*Error|Error):\s*/.test(l.trim()),
+  );
+  if (named) return named.trim().slice(0, 500);
+
+  const useful = lines.filter((l) => !isNoise(l));
+  if (useful.length) return useful.slice(-2).join(' ').slice(0, 500);
+
+  return lines.slice(-3).join(' ').slice(0, 500) || `${label} 退出码 ${code}`;
 }
 
 function brandSystemPath(preset) {
