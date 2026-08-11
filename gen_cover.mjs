@@ -266,10 +266,12 @@ function layoutErrors(c) {
   return errs;
 }
 
-// deepseek-v4-flash 的思考预算从 max_tokens 里切：预算不够时它会降级——整份答案憋在
-// reasoning_content 里、content 留空，调用方看到的就是「LLM 未返回内容」。
-// A/B 实测（V4-Flash-0731 快照）：6000 必挂、12000 一次过。预算要同时兜住「思考 + 答案」。
-const maxTokens = Math.max(12000, 6000 * variants);
+// deepseek-v4-flash 的思考预算从 max_tokens 里切：预算不够时它会降级——答案憋在
+// reasoning_content 里、content 留空，或推理膨胀顶满预算后 JSON 被截断。
+// 实测：6000 必挂；18000 也会被膨胀重试吃满（JSON 失败后的重试，推理会暴涨到
+// 17999 token 顶格截断死）。答案本体只需 ~5K token，64000 是「宽松有界」：
+// 平时用不到，膨胀时兜得住；deepseek-flash 输出便宜，别再往下调。
+const maxTokens = 64000;
 const LAYOUT_MAX_RETRIES = 2;            // 版式坐标 / image_prompt 缺失最多重出次数
 let candidates;
 let layoutFix = '';                      // 重出时追加的坐标纠正提示（仅修语法，不限创意）
