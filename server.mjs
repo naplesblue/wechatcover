@@ -177,14 +177,20 @@ function runRender({ promptFile, outBase, provider, env, ipImagePath }) {
 }
 
 // 从请求体取页面填的 key/模型 → spawn env（非空才注入，覆盖 .env）
+// 出图后端白名单（与 lib/image_providers.mjs 的 PROVIDERS 对齐）；
+// REF_CAPABLE_PROVIDERS = 支持 IP 参考图融合的（openai 走 edits，ark 走 image 参数）
+const IMAGE_PROVIDERS = ['openai', 'qwen', 'ark'];
+const REF_CAPABLE_PROVIDERS = ['openai', 'ark'];
+
 function envFromBody(body, provider) {
   const env = {};
-  for (const k of ['OPENAI_API_KEY', 'DEEPSEEK_API_KEY', 'DASHSCOPE_API_KEY']) {
+  for (const k of ['OPENAI_API_KEY', 'DEEPSEEK_API_KEY', 'DASHSCOPE_API_KEY', 'ARK_API_KEY']) {
     const v = body.keys?.[k];
     if (typeof v === 'string' && v.trim()) env[k] = v.trim();
   }
   if (typeof body.imageModel === 'string' && body.imageModel.trim()) {
-    env[provider === 'qwen' ? 'QWEN_IMAGE_MODEL' : 'OPENAI_IMAGE_MODEL'] = body.imageModel.trim();
+    const varName = { qwen: 'QWEN_IMAGE_MODEL', ark: 'ARK_IMAGE_MODEL' }[provider] || 'OPENAI_IMAGE_MODEL';
+    env[varName] = body.imageModel.trim();
   }
   return env;
 }
@@ -214,6 +220,7 @@ const server = http.createServer(async (req, res) => {
         OPENAI_API_KEY: !!process.env.OPENAI_API_KEY,
         DEEPSEEK_API_KEY: !!process.env.DEEPSEEK_API_KEY,
         DASHSCOPE_API_KEY: !!process.env.DASHSCOPE_API_KEY,
+        ARK_API_KEY: !!process.env.ARK_API_KEY,
       });
     }
 
@@ -229,12 +236,12 @@ const server = http.createServer(async (req, res) => {
       const body = JSON.parse(await readBody(req));
       const { markdown, preset = 'default', withCharacter = false, subtitle = '', variants = 1 } = body;
       if (!markdown || !markdown.trim()) return sendJson(res, 400, { error: '请粘贴文章内容' });
-      const provider = ['openai', 'qwen'].includes(body.provider) ? body.provider : 'openai';
+      const provider = IMAGE_PROVIDERS.includes(body.provider) ? body.provider : 'openai';
       const artModel = (typeof body.model === 'string' && body.model.trim()) ? body.model.trim() : null;
       const env = envFromBody(body, provider);  // 页面填的 key/模型 → env（非空才注入，覆盖 .env）
       const previewOnly = !!body.previewOnly;
-      // IP 角色参考图：前端传文件名，安全解析为 private/ip 下路径（仅 openai 支持 edits）
-      const ipImagePath = (body.withCharacter && provider === 'openai') ? resolveIpImage(body.ipImage) : null;
+      // IP 角色参考图：前端传文件名，安全解析为 private/ip 下路径（仅部分后端支持融合）
+      const ipImagePath = (body.withCharacter && REF_CAPABLE_PROVIDERS.includes(provider)) ? resolveIpImage(body.ipImage) : null;
       const ts = Date.now();
       const mdFile = path.join(WEB_DIR, `${ts}.md`);
       fs.writeFileSync(mdFile, markdown, 'utf-8');
@@ -266,9 +273,9 @@ const server = http.createServer(async (req, res) => {
       const body = JSON.parse(await readBody(req));
       const prompt = typeof body.image_prompt === 'string' ? body.image_prompt.trim() : '';
       if (prompt.length < 50) return sendJson(res, 400, { error: '提示词为空或过短' });
-      const provider = ['openai', 'qwen'].includes(body.provider) ? body.provider : 'openai';
+      const provider = IMAGE_PROVIDERS.includes(body.provider) ? body.provider : 'openai';
       const env = envFromBody(body, provider);
-      const ipImagePath = provider === 'openai' ? resolveIpImage(body.ipImage) : null;
+      const ipImagePath = REF_CAPABLE_PROVIDERS.includes(provider) ? resolveIpImage(body.ipImage) : null;
       const ts = Date.now();
       const promptFile = path.join(WEB_DIR, `${ts}.prompt.txt`);
       fs.writeFileSync(promptFile, prompt, 'utf-8');

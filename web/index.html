@@ -1385,7 +1385,7 @@
           <div class="char-pick" id="charPick" hidden>
             参考图 <select id="ipImage"></select>
           </div>
-          <p class="char-hint" id="charHint" hidden>IP 参考图仅 OpenAI 支持，出图后端已自动锁定为 OpenAI。</p>
+          <p class="char-hint" id="charHint" hidden>IP 参考图仅 OpenAI / 豆包 Seedream 支持，其余后端已暂时禁用。</p>
         </div>
 
         <!-- 极客设置 accordion -->
@@ -1415,13 +1415,14 @@
               </div>
             </div>
 
-            <div class="cfg-label">封面生图 (GPT-Image 或通义绘图)</div>
+            <div class="cfg-label">封面生图 (GPT-Image / 豆包 Seedream / 通义绘图)</div>
             <div class="cfg-row">
               <div class="field">
                 <label for="provider">出图后端</label>
                 <div class="select-wrapper">
                   <select id="provider">
                     <option value="openai">OpenAI（默认）</option>
+                    <option value="ark">豆包 Seedream（国内 · 中文标题强）</option>
                     <option value="qwen">通义千问 Qwen（国内）</option>
                   </select>
                 </div>
@@ -1631,18 +1632,18 @@ const statusEl = $('status');
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 const ART_MODELS = { deepseek: ['deepseek-v4-flash', 'deepseek-chat'], qwen: ['qwen3-max', 'qwen-plus'] };
-const IMAGE_MODELS = { openai: ['gpt-image-2', 'gpt-image-1'], qwen: ['qwen-image-2.0-pro-2026-04-22', 'qwen-image-max'] };
-const KEY_LABEL = { OPENAI_API_KEY: 'OpenAI', DEEPSEEK_API_KEY: 'DeepSeek', DASHSCOPE_API_KEY: 'DashScope' };
+const IMAGE_MODELS = { openai: ['gpt-image-2', 'gpt-image-1'], qwen: ['qwen-image-2.0-pro-2026-04-22', 'qwen-image-max'], ark: ['doubao-seedream-5.0-lite'] };  // 订阅(plan)通道只含 lite；完整版 5.0 需按量付费开通，选了会 404 UnsupportedModel
+const KEY_LABEL = { OPENAI_API_KEY: 'OpenAI', DEEPSEEK_API_KEY: 'DeepSeek', DASHSCOPE_API_KEY: 'DashScope', ARK_API_KEY: '火山方舟' };
 let lastCovers = [];
 let lastLayouts = [];  // 「先看构图」的方案（含锁定的 image_prompt），供「按此构图出图」复用
 let lastIpImage = '';  // 先看构图时用的 IP 参考图文件名，按此构图出图时一并带上（否则丢 IP 画风）
 
 // 中央 key 存储（按 key 名）；艺术指导/生图 的 key 输入框都映射到这里
-let keysStore = { OPENAI_API_KEY: '', DEEPSEEK_API_KEY: '', DASHSCOPE_API_KEY: '' };
+let keysStore = { OPENAI_API_KEY: '', DEEPSEEK_API_KEY: '', DASHSCOPE_API_KEY: '', ARK_API_KEY: '' };
 const SK = 'wechatcover.settings';
 
 function artKeyName() { return $('artProvider').value === 'deepseek' ? 'DEEPSEEK_API_KEY' : 'DASHSCOPE_API_KEY'; }
-function imgKeyName() { return $('provider').value === 'qwen' ? 'DASHSCOPE_API_KEY' : 'OPENAI_API_KEY'; }
+function imgKeyName() { return { qwen: 'DASHSCOPE_API_KEY', ark: 'ARK_API_KEY' }[$('provider').value] || 'OPENAI_API_KEY'; }
 
 function populateArtModels(selected) {
   const opts = ART_MODELS[$('artProvider').value] || [];
@@ -1731,17 +1732,17 @@ async function loadIpImages() {
 function updateCharState() {
   const on = $('withCharacter').checked;
   $('charPick').hidden = !on;
-  // IP 参考图仅 OpenAI edits 端点支持 → 勾上时锁定出图后端为 OpenAI，禁掉 qwen
+  // IP 参考图只有 openai(edits) / ark(image 参数) 支持 → 勾上时禁掉不支持的后端，
+  // 当前选中的若不支持则回落 openai（不动已经选好的 ark）
   const provSel = $('provider');
-  const qwenOpt = [...provSel.options].find((o) => o.value === 'qwen');
-  if (on) {
-    if (provSel.value !== 'openai') { provSel.value = 'openai'; populateImageModels(); syncKeyInputs(); }
-    if (qwenOpt) qwenOpt.disabled = true;
-    provSel.title = 'IP 参考图仅 OpenAI 支持，已锁定为 OpenAI';
-  } else if (qwenOpt) {
-    qwenOpt.disabled = false;
-    provSel.title = '';
+  const REF_CAPABLE = ['openai', 'ark'];
+  for (const o of provSel.options) {
+    if (!REF_CAPABLE.includes(o.value)) o.disabled = on;
   }
+  if (on && !REF_CAPABLE.includes(provSel.value)) {
+    provSel.value = 'openai'; populateImageModels(); syncKeyInputs();
+  }
+  provSel.title = on ? 'IP 参考图仅 OpenAI / 豆包 Seedream 支持' : '';
   $('charHint').hidden = !on;
 }
 function keyReady(name) { return (keysStore[name] && keysStore[name].trim() !== '') || !!envKeys[name]; }
