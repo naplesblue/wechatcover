@@ -65,6 +65,23 @@
 | {{标志配件}} | {{如眼镜}} |
 | {{IP 核心标识}} | {{如肩上的卡通形象，拟人化、有表情}} |
 
+### 钦定配色（用参考图时**务必**填，否则每张颜色都不一样）
+
+参考图若是黑白线稿，"外形交给参考图"这条对**颜色**是失效的——图像模型会自己上色，
+且往往被色板里的点睛色带跑（实测吉祥物被涂成点睛橙）。所以颜色要在这里钉死：
+写一句固定的英文颜色句，工具会要求 CHARACTER 段**原样包含**它（这是颜色词的唯一例外，
+其余颜色描述仍一律禁止）。不写这节 = 放任模型自由发挥。
+
+```
+{{固定颜色句，直接写成能塞进 prompt 的英文。两种常见写法：}}
+keep the mascot in its original BLACK-AND-WHITE line-art look exactly as in the
+reference — white body, black outlines, NO color fill on the mascot
+{{或：the mascot's body is {{某个具体色，如 #4C9A2A green}}, unchanged in every cover}}
+```
+
+同时在下面「不能有的元素」里补一条否定，双保险：
+`NO color fill on the mascot … NO red, NO orange, NO green mascot body`（按你钦定的留一个、否掉其余）。
+
 ### 角色与场景的关系
 角色不是"摆 pose"——必须与画面里的物/事件**有互动**（盯着、指着、拿着、检查）。
 
