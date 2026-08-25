@@ -182,7 +182,7 @@ const subtitleJsonLine = finalSubtitle
 
 // 带 IP 才追加 CHARACTER 指令；不带 IP 时 brand_system 的 IP 段已被移除，无需任何说明
 const characterExtra = withCharacter
-  ? `\n9. **必须**在 image_prompt 的 SUBJECT 段后追加 CHARACTER 段（参考 art_director.md「角色启用条款」与 brand_system.md「IP 角色规范」），让 IP 角色与画面互动${ipImage ? `\n   ⚠️ 本次会把 IP 角色**参考图**一并喂给图像模型（edits 融合）。**参考图是角色长相的唯一依据**：CHARACTER 段只写"the mascot shown in the reference image"，用 brand_system 给的**最小身份**点明它本质是什么（如 a chili-pepper mascot），然后**只描述它的动作 / 表情 / 互动**。\n   **硬禁**：CHARACTER 段不得出现任何参考图里没有的外观词——不要写衣服 / 帽子 / 贝雷帽 / 马甲 / 围巾 / 配饰 / 五官等任何外形描述（"keep the reference's exact look, do not add anything not in the reference"）。外形 100% 交给参考图，文字只管它"在做什么、什么情绪"。更不要把它画成人。
+  ? `\n9. **必须**在 image_prompt 的 SUBJECT 段后追加 CHARACTER 段（参考 art_director.md「角色启用条款」与 brand_system.md「IP 角色规范」），让 IP 角色与画面互动${ipImage ? `\n   ⚠️ 本次会把 IP 角色**参考图**一并喂给图像模型（edits 融合）。**参考图是角色长相的唯一依据**：CHARACTER 段只写"the mascot shown in the reference image"，用 brand_system 给的**最小身份**点明它本质是什么（如 a chili-pepper mascot），然后**只描述它的全身姿态 / 朝向 / 动作 / 表情 / 互动**。\n   ⚠️ **姿态必须写全身**（坐 / 蹲 / 趴 / 倚靠 / 侧身 / 背对 / 前倾…）+ 身体朝向，不能只写手在干什么——只写手臂时图像模型会默认「竖直站立正面朝人」，那正好等于参考图姿势，成图就像把参考图原样贴上去。**参考图只定长相，不定姿势**，换姿势是允许且鼓励的。\n   **硬禁**：CHARACTER 段不得出现任何参考图里没有的外观词——不要写衣服 / 帽子 / 贝雷帽 / 马甲 / 围巾 / 配饰 / 五官等任何外形描述（"keep the reference's exact look, do not add anything not in the reference"）。外形 100% 交给参考图，文字只管它"在做什么、什么情绪"。更不要把它画成人。
    **颜色唯一例外**：若 brand_system 的「钦定配色」给了固定颜色句，CHARACTER 段**必须原样包含**那句；除这句外仍禁止出现任何其他颜色词。没有钦定配色时颜色也一律不写。` : ''}`
   : '';
 

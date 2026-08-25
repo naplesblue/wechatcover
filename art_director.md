@@ -295,6 +295,17 @@ CHARACTER 段：
 
 - 照搬 brand_system 规定的角色服饰、配件、IP 核心标识、质感（如有具体形象就如实翻译成英文）
 - 角色必须与画面里的物/事件 **INTERACTING**（看、指、拿、检查），不是站在前面摆 pose
+- **必须写出全身姿态（BODY POSTURE），不能只写手在干什么**
+  只写"一只手举着 X、另一只手指着 Y"是不够的——没写身体，图像模型就填默认值
+  「竖直站立 + 正面朝向观众」，而这通常正好等于参考图的姿势，结果看起来像
+  "参考图被原样贴上去"。（实测：165 个历史 CHARACTER 段里 75% 写了手臂动作，
+  只有 22% 写了身体姿态；带姿态的那些角色才真的换了动作。）
+  从这类词里挑一个明确的写进去：
+  `sitting on the ground / crouching / kneeling / leaning over the {物体} /
+   lying on its side / climbing onto / bending forward / seen from the side (profile) /
+   seen from behind / seated with legs stretched out`
+  并说明**身体朝向**（面向画面左/右、四分之三侧、背对观众）与**站位关系**
+  （在物体的左侧/后方/上方，坐在下方边缘…）。
 - 表情按文章调性选（curious / surprised / amused / focused 等）
 - 套用 brand_system「不能有的元素（角色启用时）」里列出的 character-specific NEGATIVE
 
