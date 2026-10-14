@@ -16,6 +16,9 @@ article-draft.md
 # 本地测试素材 / 草稿 / 探针配置（不发布）—— 测试用的文章、临时 brand_system 都放这
 local/
 
+# 单元测试（fixture 含私有 IP 细节；本机跑 node --test tests/*.test.mjs，不发布）
+tests/
+
 # 私有风格 / 个人 IP / 专属预设（本机用，不发布）—— 仓库会自动扫盘，与 presets/ 合并显示
 private/
 
