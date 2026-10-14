@@ -43,6 +43,8 @@ import './lib/env.mjs';
 import { callLLM, safeParseJSON } from './lib/llm.mjs';
 import { verifyTitle } from './lib/qa.mjs';
 import { renderWireframe } from './lib/wireframe.mjs';
+import { parseCharacterRules, guardCandidates } from './lib/character_guard.mjs';
+import { layoutErrors } from './lib/layout_check.mjs';
 
 const ROOT = import.meta.dirname;
 
@@ -153,6 +155,8 @@ const artDirector = fs.readFileSync(path.join(ROOT, 'art_director.md'), 'utf-8')
 if (!withCharacter) {
   brandSystem = brandSystem.replace(/\n## IP 角色规范[\s\S]*?(?=\n## |\s*$)/, '\n').trim();
 }
+// 带 IP 时读出预设声明的角色护栏（钦定句 / 角色段禁词），出图前由代码校验 CHARACTER 段
+const characterRules = withCharacter ? parseCharacterRules(brandSystem) : { canonical: null, bannedWords: [] };
 
 // ── 调 LLM 做艺术指导 ──
 const ART_DIRECTOR_MODEL = modelOverride || process.env.GEN_COVER_MODEL || 'deepseek-v4-flash';
@@ -199,9 +203,9 @@ const candidateSchema = `{
   "title_text": "封面显示的主标题（中文 6-10 字，是 hook 的视觉化版本）",
 ${subtitleJsonLine}
   "layout": {
-    "pattern": "Step 2.5 的版式名（左字右图 / 右字左图 / 字压图 / 上图下字 / 上字下图 之一）",
+    "pattern": "Step 2.5 的版式名（左字右图 / 右字左图 / 字压图 / 上图下字 / 上字下图 / 全幅图 之一；情绪 / 感悟语域必须用 全幅图）",
     "focal_point": "视线第一落点，单格（如 C-M）",
-    "title": { "zone": "标题占区（如 L-T..L-B）", "align": "left|center|right", "weight": "dominant|secondary" },
+    "title": { "zone": "标题占区（如 L-T..L-B）", "align": "left|center|right", "weight": "dominant|secondary" }（全幅图时整个 title 写 null）,
     "elements": [ { "what": "具名物体", "zone": "落区（如 C-T..C-B）", "role": "focal|support" } ],
     "accent": { "what": "点睛色落点", "zone": "单格" },
     "negative_space": "留白格（如 R-T）",
@@ -232,40 +236,14 @@ ${essayMode ? '\n**⚠️ 用户已手动选定 register = 感悟**：跳过 Ste
 关键要求：
 1. **先做 Step 0**：判断 register（信息 / 情绪）与 design_intent，后面手法服从它——信息类才追数字钩；情绪类走氛围意象、克制，**不要硬塞数字或大字直给**
 2. 钩子与画面按 register 选手法（信息类=具体物体+可猜主题；情绪类=暗示情绪、可抽象、忌写实直述）
-3. 必须先按 Step 2.5 给出 layout：先想视觉层级再从 playbook 选 pattern，标注各元素落格、留白格、密度；标题区与焦点不抢同一格。image_prompt 的 COMPOSITION 段由 layout 翻译而来，体现 CANVAS UNITY（无飞地、无死区）
+3. 必须先按 Step 2.5 给出 layout：先想视觉层级再从 playbook 选 pattern，标注各元素落格、留白格、密度；标题区与焦点不抢同一格。**情绪 / 感悟语域图上不放标题，pattern 必须用「全幅图」、title 写 null、主体组团占画面中部**，不要给不存在的标题留出空白区。image_prompt 的 COMPOSITION 段由 layout 翻译而来，体现 CANVAS UNITY（无飞地、无死区）
 4. image_prompt 的 STYLE 段照搬 brand_system 的「技法与质感」（按风格，不要默认 ink/水彩）；色板段显式列 hex + 占比
 5. image_prompt 的 NEGATIVE = 通用 AI 俗套黑名单 + 禁真品牌 logo + **禁编造数据**（图上的数字/比例/版本号只能用文章真有的，没真数就用非数字的"数据感"，不要凭空造 92%/8x 之类）+ brand_system 的「风格专属 anti-slop」（照搬）
 6. title_text 始终输出（作文章标题用）；但**情绪语域**时 image_prompt 的 TEXT IN IMAGE **不在图上渲染标题**（纯氛围图，标题交给文章标题），仅**信息语域**才在图上渲染大标题
 7. ${subtitleNote}
 8. 只输出 JSON，不要 markdown 代码块标记，不要解释${characterExtra}${variantsNote}`;
 
-// ── 版式坐标兜底校验：只挑客观硬错（非法坐标 / 缺核心结构字段），有错就让 LLM 重出 ──
-// 软问题（重叠、留白多少、pattern 选择）不管——那是设计取舍，人会自己跳过，代码不限制 LLM 思路。
-const COLS = ['L', 'C', 'R'], ROWS = ['T', 'M', 'B'];
-function cellValid(cell) {
-  if (typeof cell !== 'string') return false;
-  const [c, r] = cell.trim().split('-');
-  return COLS.includes(c) && ROWS.includes(r);
-}
-function zoneValid(zone) {
-  if (typeof zone !== 'string' || !zone.trim()) return false;
-  const parts = zone.split('..').map((s) => s.trim());
-  return parts.length >= 1 && parts.length <= 2 && parts.every(cellValid);
-}
-// 返回该候选 layout 的硬错清单（空数组 = 通过）。
-// 只查「渲染核心块」的坐标——标题区 + 各具名元素：它们坐标非法会让标题/焦点直接画不出来。
-// 不查 focal_point / accent / negative_space：前者只是元信息，后两者非法时只是少画一个小块（优雅降级），
-// 且 negative_space="none" 对满幅「字压图」是合理表达——硬卡会白白触发重出。
-function layoutErrors(c) {
-  const errs = [];
-  const L = c && c.layout;
-  if (!L || typeof L !== 'object') { errs.push('layout 缺失或非对象'); return errs; }
-  if (!L.title || !zoneValid(L.title.zone)) errs.push(`title.zone 非法坐标「${L.title && L.title.zone}」`);
-  (Array.isArray(L.elements) ? L.elements : []).forEach((el, i) => {
-    if (!zoneValid(el && el.zone)) errs.push(`elements[${i}].zone 非法坐标「${el && el.zone}」`);
-  });
-  return errs;
-}
+// ── 版式坐标兜底校验见 lib/layout_check.mjs（只挑客观硬错，有错就让 LLM 重出）──
 
 // deepseek-v4-flash 的思考预算从 max_tokens 里切：预算不够时它会降级——答案憋在
 // reasoning_content 里、content 留空，或推理膨胀顶满预算后 JSON 被截断。
@@ -277,7 +255,7 @@ const LAYOUT_MAX_RETRIES = 2;            // 版式坐标 / image_prompt 缺失�
 let candidates;
 let layoutFix = '';                      // 重出时追加的坐标纠正提示（仅修语法，不限创意）
 for (let attempt = 0; ; attempt++) {
-  console.error(`[INFO] 调用 ${ART_DIRECTOR_MODEL} 做艺术指导（thinking enabled, effort=${effort}${variants > 1 ? `, ${variants} 候选` : ''}${attempt > 0 ? `, 版式重出 ${attempt}/${LAYOUT_MAX_RETRIES}` : ''}）...`);
+  console.error(`[INFO] 调用 ${ART_DIRECTOR_MODEL} 做艺术指导（thinking enabled, effort=${effort}${variants > 1 ? `, ${variants} 候选` : ''}${attempt > 0 ? `, 重出 ${attempt}/${LAYOUT_MAX_RETRIES}` : ''}）...`);
   let llmOutput;
   try {
     llmOutput = await callLLM(systemPrompt, userPrompt + layoutFix, maxTokens, ART_DIRECTOR_MODEL, {
@@ -330,11 +308,17 @@ for (let attempt = 0; ; attempt++) {
   const promptBad = candidates.map((c, i) => (!c.image_prompt || c.image_prompt.length < 1500) ? i : -1).filter((i) => i >= 0);
   const errsPerCand = candidates.map(layoutErrors);
   const layoutBad = errsPerCand.map((e, i) => (e.length ? i : -1)).filter((i) => i >= 0);
-  if (promptBad.length === 0 && layoutBad.length === 0) break;  // 全部通过
+  // IP 角色护栏：钦定句漏抄 → 代码就地补回；禁词 / 缺 CHARACTER 段 → 重出
+  const guard = guardCandidates(candidates, characterRules);
+  for (const i of guard.injected) console.error(`[WARN] 候选 ${i + 1} 的 CHARACTER 段漏抄钦定句，已由代码补回`);
+  const charBad = guard.issues;
+  if (promptBad.length === 0 && layoutBad.length === 0 && charBad.length === 0) break;  // 全部通过
 
   const reasons = [];
   if (promptBad.length) reasons.push(`候选 ${promptBad.map((i) => i + 1).join('/')} 的 image_prompt 缺失或过短`);
   if (layoutBad.length) reasons.push(layoutBad.map((i) => `候选 ${i + 1}（${errsPerCand[i].join('；')}）`).join('，'));
+  const charDetail = charBad.map((x) => `候选 ${x.index + 1}（${x.kind === 'banned' ? `CHARACTER 段含禁词 ${x.words.join(' / ')}` : '缺 CHARACTER 段'}）`).join('，');
+  if (charBad.length) reasons.push(charDetail);
   const detail = reasons.join('；');
 
   if (attempt >= LAYOUT_MAX_RETRIES) {
@@ -342,13 +326,18 @@ for (let attempt = 0; ; attempt++) {
       console.error(`[FATAL] 重试 ${LAYOUT_MAX_RETRIES} 次后 image_prompt 仍缺失或过短（多为输出被截断）。可重试，或换更稳的艺术指导模型。`);
       process.exit(1);
     }
-    console.error(`[WARN] 版式坐标仍有硬错（已重出 ${LAYOUT_MAX_RETRIES} 次），保留当前结果继续：${detail}`);
-    break;  // 仅 layout 软降级，不阻断
+    if (charBad.some((x) => x.kind === 'banned')) {  // 禁词会直接毁掉 IP 形象（如标志特征被改掉），不带病出图
+      console.error(`[FATAL] 重出 ${LAYOUT_MAX_RETRIES} 次后 CHARACTER 段仍违反预设「角色段禁词」：${charDetail}。可重试，或换更稳的艺术指导模型。`);
+      process.exit(1);
+    }
+    console.error(`[WARN] 仍有软问题（已重出 ${LAYOUT_MAX_RETRIES} 次），保留当前结果继续：${detail}`);
+    break;  // layout 坐标 / 缺 CHARACTER 段软降级，不阻断（参考图仍会喂给图像模型）
   }
   console.error(`[RETRY] 候选有问题，重出（${attempt + 1}/${LAYOUT_MAX_RETRIES}）：${detail}`);
-  layoutFix = layoutBad.length
-    ? `\n\n【重要修正】上次 layout 含非法坐标（${detail}）。坐标只能是 列 L/C/R 与 行 T/M/B 的组合（单格如 C-M，区间如 L-T..R-B）；底部整行 = L-B..R-B，顶部整行 = L-T..R-T。请重新输出全部候选，确保每个 zone 和 focal_point 都是合法坐标。`
-    : '';
+  const fixes = [];
+  if (layoutBad.length) fixes.push(`上次 layout 有硬错（${detail}）。坐标只能是 列 L/C/R 与 行 T/M/B 的组合（单格如 C-M，区间如 L-T..R-B）；底部整行 = L-B..R-B，顶部整行 = L-T..R-T。请重新输出全部候选，确保每个 zone 和 focal_point 都是合法坐标。`);
+  if (charBad.length) fixes.push(`上次 image_prompt 的 CHARACTER 段有问题（${charDetail}）。每个候选都必须有 CHARACTER 段；CHARACTER 段里不得出现品牌系统「角色段禁词」列出的任何词（${characterRules.bannedWords.join(', ')}），按品牌系统「IP 角色规范」允许的方式改写。请重新输出全部候选。`);
+  layoutFix = fixes.length ? `\n\n【重要修正】${fixes.join('\n')}` : '';
 }
 
 // 清洗 image_prompt：把"网格脚手架"从送给图像模型的提示词里抹掉。

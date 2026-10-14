@@ -71,6 +71,7 @@
 且往往被色板里的点睛色带跑（实测吉祥物被涂成点睛橙）。所以颜色要在这里钉死：
 写一句固定的英文颜色句，工具会要求 CHARACTER 段**原样包含**它（这是颜色词的唯一例外，
 其余颜色描述仍一律禁止）。不写这节 = 放任模型自由发挥。
+工具出图前会用代码校验：CHARACTER 段漏抄这句时自动补回。
 
 ```
 {{固定颜色句，直接写成能塞进 prompt 的英文。两种常见写法：}}
@@ -81,6 +82,16 @@ reference — white body, black outlines, NO color fill on the mascot
 
 同时在下面「不能有的元素」里补一条否定，双保险：
 `NO color fill on the mascot … NO red, NO orange, NO green mascot body`（按你钦定的留一个、否掉其余）。
+
+### 角色段禁词（可选；与 IP 形象冲突的描述词，代码校验）
+
+有些描述会让图像模型改掉 IP 的标志特征——例如角色的眼睛被某件标志性配饰挡住，CHARACTER 段一写
+`wide-eyed`，模型就会拿掉配饰去画眼睛。把这类词列在这里：工具出图前扫 CHARACTER 段（钦定句与
+"the eyes are NEVER visible" 这类否定句不算），命中就让艺术指导重写，重写仍有则报错停止。
+
+```
+{{逗号分隔的英文词，如：eyes, eye, wide-eyed, gaze, stare, blink}}
+```
 
 ### 角色与场景的关系
 角色不是"摆 pose"——必须与画面里的物/事件**有互动**（盯着、指着、拿着、检查）。
