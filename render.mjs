@@ -13,9 +13,9 @@
  *   cat prompt.txt | node render.mjs --out out.png
  *
  * 出图后端（--provider，或 IMAGE_PROVIDER 环境变量，默认 openai）：
- *   openai   — GPT-Image-2，中文文字渲染强；需 OPENAI_API_KEY（外卡）
+ *   openai   — GPT-Image-2.5（gpt-image-2.5-sunburst），中文文字渲染强；需 OPENAI_API_KEY（外卡）
  *   qwen     — 通义千问 Qwen-Image（qwen-image-max）；需 DASHSCOPE_API_KEY（国内可支付宝充值，中文文字渲染强）
- *   ark      — 火山引擎豆包 Seedream（doubao-seedream-5.0-lite）；需 ARK_API_KEY（国内，中文标题实测最强）
+ *   ark      — 火山引擎豆包 Seedream（doubao-seedream-5-0-pro）；需 ARK_API_KEY（国内，中文标题实测最强）
  *
  * 备注：
  *   - openai 默认 1920x816 + low（省钱版 ~¥0.02/张）；高清 --size 2400x1024 --quality medium

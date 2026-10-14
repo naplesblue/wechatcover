@@ -1632,7 +1632,7 @@ const statusEl = $('status');
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 const ART_MODELS = { deepseek: ['deepseek-v4-flash', 'deepseek-chat'], qwen: ['qwen3-max', 'qwen-plus'] };
-const IMAGE_MODELS = { openai: ['gpt-image-2', 'gpt-image-1'], qwen: ['qwen-image-2.0-pro-2026-04-22', 'qwen-image-max'], ark: ['doubao-seedream-5.0-lite'] };  // 订阅(plan)通道只含 lite；完整版 5.0 需按量付费开通，选了会 404 UnsupportedModel
+const IMAGE_MODELS = { openai: ['gpt-image-2.5-sunburst', 'gpt-image-2.5-flare', 'gpt-image-2'], qwen: ['qwen-image-2.0-pro-2026-04-22', 'qwen-image-max'], ark: ['doubao-seedream-5-0-pro'] };  // 订阅(plan)通道现只含 5-0-pro（2026-10 起 5.0-lite 已移出，选了会 404 UnsupportedModel）；首项即默认，浏览器记住的旧值不在列表里会自动回落到首项
 const KEY_LABEL = { OPENAI_API_KEY: 'OpenAI', DEEPSEEK_API_KEY: 'DeepSeek', DASHSCOPE_API_KEY: 'DashScope', ARK_API_KEY: '火山方舟' };
 let lastCovers = [];
 let lastLayouts = [];  // 「先看构图」的方案（含锁定的 image_prompt），供「按此构图出图」复用
