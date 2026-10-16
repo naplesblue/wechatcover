@@ -29,6 +29,7 @@
  *     [--qa-retries N]                             # 糊字时自动重出次数，默认 1
  *     [--provider openai|qwen]                     # 出图后端，默认 openai（也可 IMAGE_PROVIDER）
  *                                                  #   qwen=通义千问 Qwen-Image，需 DASHSCOPE_API_KEY
+ *     [--optional 白猫=on|off]                     # 强制开 / 关预设里的可选段（默认按预设写的概率抽签）
  *
  * 环境变量（.env）：
  *   DEEPSEEK_API_KEY  —— 艺术指导（默认模型 deepseek-v4-flash）
@@ -45,6 +46,7 @@ import { verifyTitle } from './lib/qa.mjs';
 import { renderWireframe } from './lib/wireframe.mjs';
 import { parseCharacterRules, guardCandidates } from './lib/character_guard.mjs';
 import { layoutErrors } from './lib/layout_check.mjs';
+import { applyOptionalBlocks, parseOverrides } from './lib/optional_blocks.mjs';
 
 const ROOT = import.meta.dirname;
 
@@ -87,6 +89,9 @@ const imageProvider = typeof arg('provider') === 'string' ? arg('provider') : nu
 const diverseLayouts = args.includes('--diverse-layouts');
 // 感悟模式：手动强制 register=感悟（无文字、纯情绪意象图，适合散文/随笔/感悟）
 const essayMode = args.includes('--essay');
+// 预设可选段的强制开关：--optional 白猫=on,彩蛋=off（不传 = 按预设里的概率抽签）
+let optionalOverrides;
+try { optionalOverrides = parseOverrides(arg('optional')); } catch (err) { console.error(`[ERROR] ${err.message}`); process.exit(1); }
 
 if (!fromTextPath) {
   console.error('[ERROR] --from-text 必填');
@@ -148,6 +153,10 @@ if (!fs.existsSync(brandSystemPath)) {
   process.exit(1);
 }
 let brandSystem = fs.readFileSync(brandSystemPath, 'utf-8');
+// 可选段抽签（频率是确定性决策，交给代码；见 lib/optional_blocks.mjs）
+const optional = applyOptionalBlocks(brandSystem, Math.random, optionalOverrides);
+brandSystem = optional.md;
+for (const [name, on] of Object.entries(optional.decisions)) console.error(`[INFO] 可选段「${name}」: ${on ? '出现' : '不出现'}${name in optionalOverrides ? '（强制）' : '（抽签）'}`);
 const artDirector = fs.readFileSync(path.join(ROOT, 'art_director.md'), 'utf-8');
 
 // IP 角色规范是 brand_system 里的可插拔模块（按「## IP 角色规范」小标题切到下一个 ## 或文末）。
@@ -391,7 +400,7 @@ for (const [i, c] of candidates.entries()) {
   console.error(`版式:      ${c.layout?.pattern || '—'} · ${c.layout?.density || '—'} · 焦点 ${c.layout?.focal_point || '—'}`);
   console.error(`prompt:    ${c.image_prompt.length} 字符`);
 
-  fs.writeFileSync(metaPath, JSON.stringify({ ...c, sourceSlug: cs.sourceSlug }, null, 2), 'utf-8');
+  fs.writeFileSync(metaPath, JSON.stringify({ ...c, sourceSlug: cs.sourceSlug, optional_blocks: optional.decisions }, null, 2), 'utf-8');
 
   if (wireframe) {
     const htmlPath = outPath.replace(/\.png$/i, '.wireframe.html');
