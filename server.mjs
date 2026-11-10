@@ -16,6 +16,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import './lib/env.mjs';  // 加载 .env 到 process.env（供 /keys-status 判断 .env 里有没有 key）
+import { verifyTitle } from './lib/qa.mjs';
+import { noTitleRegister } from './lib/register.mjs';
 // 注意：排版导出用的 lib/wechat_render.mjs 依赖 markdown-it + juice，
 // 这里**懒加载**——这样封面那条路（gen_cover，零依赖）即使没 npm install 也能用，
 // 只有点「导出微信排版 HTML」才需要依赖。
@@ -180,6 +182,8 @@ function runRender({ promptFile, outBase, provider, env, ipImagePath }) {
 // 出图后端白名单（与 lib/image_providers.mjs 的 PROVIDERS 对齐）；
 // REF_CAPABLE_PROVIDERS = 支持 IP 参考图融合的（openai 走 edits，ark 走 image 参数）
 const IMAGE_PROVIDERS = ['openai', 'qwen', 'ark'];
+// /render 标题 QA 不过时最多自动重出几次
+const RENDER_QA_RETRIES = 2;
 const REF_CAPABLE_PROVIDERS = ['openai', 'ark'];
 
 function envFromBody(body, provider) {
@@ -254,7 +258,7 @@ const server = http.createServer(async (req, res) => {
         const prompts = paths.map((mp) => {
           let m = {};
           try { m = JSON.parse(fs.readFileSync(mp, 'utf-8')); } catch {}
-          return { register: m.register || '', design_intent: m.design_intent || '', hook: m.hook || '', visual_concept: m.visual_concept || '', title_text: m.title_text || '', subtitle_text: m.subtitle_text || '', image_prompt: m.image_prompt || '', layout: m.layout || null };
+          return { register: m.register || '', no_title: noTitleRegister(m.register), design_intent: m.design_intent || '', hook: m.hook || '', visual_concept: m.visual_concept || '', title_text: m.title_text || '', subtitle_text: m.subtitle_text || '', image_prompt: m.image_prompt || '', layout: m.layout || null };
         });
         return sendJson(res, 200, { prompts });
       }
@@ -263,7 +267,7 @@ const server = http.createServer(async (req, res) => {
         const base = path.basename(p);
         let meta = {};
         try { meta = JSON.parse(fs.readFileSync(p.replace(/\.png$/i, '.meta.json'), 'utf-8')); } catch {}
-        return { url: `/cover?f=${encodeURIComponent(base)}`, file: base, register: meta.register || '', design_intent: meta.design_intent || '', hook: meta.hook || '', visual_concept: meta.visual_concept || '', title_text: meta.title_text || '', image_prompt: meta.image_prompt || '' };
+        return { url: `/cover?f=${encodeURIComponent(base)}`, file: base, register: meta.register || '', no_title: noTitleRegister(meta.register), design_intent: meta.design_intent || '', hook: meta.hook || '', visual_concept: meta.visual_concept || '', title_text: meta.title_text || '', image_prompt: meta.image_prompt || '' };
       });
       return sendJson(res, 200, { covers });
     }
@@ -281,8 +285,23 @@ const server = http.createServer(async (req, res) => {
       fs.writeFileSync(promptFile, prompt, 'utf-8');
       const outBase = path.join(WEB_DIR, `${ts}.png`);
       const p = await runRender({ promptFile, outBase, provider, env, ipImagePath });
+      // 标题 QA + 自动重出（与 gen_cover 同一套 verifyTitle）；情绪/感悟语域不画标题 → 跳过
+      const title = typeof body.title_text === 'string' ? body.title_text.trim() : '';
+      const moodNoText = noTitleRegister(body.register);
+      let qa = null;
+      if (title && !moodNoText) {
+        for (let attempt = 0; ; attempt++) {
+          qa = await verifyTitle(p, title, { apiKey: env.OPENAI_API_KEY });
+          if (qa.skipped) { console.error(`[QA] 跳过（${qa.error}）`); break; }
+          if (qa.ok) { console.error('[QA] ✓ 标题渲染正确'); break; }
+          console.error(`[QA] ✗ 标题可能有问题: ${qa.issues || '—'}`);
+          if (attempt >= RENDER_QA_RETRIES) { console.error(`[QA] 已达重试上限(${RENDER_QA_RETRIES})，保留当前图`); break; }
+          console.error(`[QA] 自动重出 (${attempt + 1}/${RENDER_QA_RETRIES})...`);
+          await runRender({ promptFile, outBase, provider, env, ipImagePath });
+        }
+      }
       const base = path.basename(p);
-      return sendJson(res, 200, { url: `/cover?f=${encodeURIComponent(base)}`, file: base });
+      return sendJson(res, 200, { url: `/cover?f=${encodeURIComponent(base)}`, file: base, qa });
     }
 
     if (req.method === 'POST' && url.pathname === '/wechat') {

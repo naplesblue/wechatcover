@@ -1841,7 +1841,7 @@ function buildWireframe(c) {
   add(L.negative_space, 'wf-neg', '<span class="wf-tag">留白</span>');
   (L.elements || []).forEach((el) => { const f = el.role === 'focal'; add(el.zone, f ? 'wf-focal' : 'wf-support', `<span class="wf-tag">${f ? '焦点' : '辅助'}</span>${esc(el.what)}`); });
   // 情绪 / 感悟 不渲染标题到封面,线框把 title.zone 标成「无文字」(像留白),不画标题大字
-  const wfMoodNoText = /情绪|情感|氛围|感悟|散文|随笔|mood|emotion|essay/i.test(c.register || '');
+  const wfMoodNoText = !!c.no_title;  // 由 server 按 lib/register.mjs 判定下发
   if (L.title && L.title.zone) {
     if (wfMoodNoText) add(L.title.zone, 'wf-neg', `<span class="wf-tag">无文字</span>`);
     else add(L.title.zone, 'wf-title', `<span class="wf-tag">标题</span><b>${esc(c.title_text)}</b>`);
@@ -1862,7 +1862,7 @@ function renderWireframes(items) {
   lastLayouts = items;
   items.forEach((c, i) => {
     const L = c.layout || {};
-    const moodNoTextCard = /情绪|情感|氛围|感悟|散文|随笔|mood|emotion|essay/i.test(c.register || '');
+    const moodNoTextCard = !!c.no_title;
     const titleLabel = moodNoTextCard ? '文章标题（不画到图上）' : '主标题';
     const meta = [L.pattern ? `版式：${esc(L.pattern)}` : '', L.density ? `密度：${esc(L.density)}` : '', L.reading_flow ? `视线：${esc(L.reading_flow)}` : '', c.hook ? `抓手：${esc(c.hook)}` : ''].filter(Boolean).join('　·　');
     const div = document.createElement('div');
@@ -1899,17 +1899,20 @@ async function renderFromLayout(index, btn) {
       statusEl.textContent = n > 1 ? `按构图出图 (${k + 1}/${n})…` : '按构图出图中…';
       const data = await postJson('/render', {
         image_prompt: c.image_prompt,
+        title_text: c.title_text,
+        register: c.register,
         provider: $('provider').value,
         imageModel: $('imageModel').value,
         keys: { ...keysStore },
         ipImage: lastIpImage,   // 带上先看构图时的参考图，延续 IP 画风
       });
-      covers.push({ url: data.url, file: data.file, hook: c.hook, visual_concept: c.visual_concept, title_text: c.title_text, image_prompt: c.image_prompt });
+      covers.push({ url: data.url, file: data.file, qa: data.qa, register: c.register, hook: c.hook, visual_concept: c.visual_concept, title_text: c.title_text, image_prompt: c.image_prompt });
     }
     stopStepLoader();
     renderCovers(covers);
     if (lastLayouts.length > 1) $('backBar').hidden = false;  // 还有别的版式可换 → 显示返回按钮
-    statusEl.textContent = `已按构图出 ${covers.length} 张`;
+    const qaBad = covers.filter((x) => x.qa && !x.qa.ok && !x.qa.skipped).length;
+    statusEl.textContent = `已按构图出 ${covers.length} 张` + (qaBad ? `（其中 ${qaBad} 张自动重出后标题仍可能有渲染问题，请检查）` : '');
   } catch (err) {
     stopStepLoader();
     statusEl.textContent = '出图失败：' + err.message;
@@ -2192,6 +2195,8 @@ async function reroll(index, btn) {
   try {
     const data = await postJson('/render', {
       image_prompt: cover.image_prompt,
+      title_text: cover.title_text,
+      register: cover.register,
       provider: $('provider').value,
       imageModel: $('imageModel').value,
       keys: { ...keysStore },
@@ -2202,7 +2207,9 @@ async function reroll(index, btn) {
     cover.url = data.url; cover.file = data.file;
     const dl = card.querySelector('a.btn-dl'); if (dl) { dl.href = data.url; dl.download = data.file; }
     const zoom = card.querySelector('.btn-zoom'); if (zoom) zoom.dataset.src = bust;
-    statusEl.textContent = '已重出一张（同提示词）';
+    statusEl.textContent = (data.qa && !data.qa.ok && !data.qa.skipped)
+      ? `已重出一张（同提示词），但标题仍可能有渲染问题：${data.qa.issues}`
+      : '已重出一张（同提示词）';
   } catch (err) {
     statusEl.textContent = '重出失败：' + err.message;
   } finally {

@@ -136,7 +136,7 @@ npm start              # 然后打开 http://localhost:8787（等同 node server
 | `--diverse-layouts` | 关 | 配合 `--variants N`（N>1）：让各候选尽量用不同版式 pattern，便于横向对比构图 |
 | `--model <id>` | `deepseek-v4-flash` | 艺术指导模型（也可用 `GEN_COVER_MODEL` 环境变量）|
 | `--effort low\|high\|max` | `high` | 推理强度（仅 deepseek 生效，映射为 `reasoning_effort`）|
-| `--no-qa` / `--qa-retries N` | QA 开 / `1` | 中文标题渲染质检（默认开，糊字自动重出）|
+| `--no-qa` / `--qa-retries N` | QA 开 / `2` | 中文标题渲染质检（默认开，糊字自动重出）|
 | `--preview` | 关 | 只做艺术指导、打印 JSON，不调出图 API |
 | `--wireframe` | 关 | 出图前先生成 HTML 版式线框图（`{out}.wireframe.html`）确认构图，不出图；同时写出锁定提示词 `{out}.prompt.txt` 供随后出图 |
 | `--force` | 关 | 覆盖已存在的输出文件 |

@@ -26,7 +26,7 @@
  *                                                  # N>1 时输出 {out}-1.png … {out}-N.png
  *     [--diverse-layouts]                          # N>1 时让各候选尽量用不同版式 pattern（默认按内容自动选）
  *     [--no-qa]                                    # 关闭中文标题渲染质检（默认开）
- *     [--qa-retries N]                             # 糊字时自动重出次数，默认 1
+ *     [--qa-retries N]                             # 糊字时自动重出次数，默认 2
  *     [--provider openai|qwen]                     # 出图后端，默认 openai（也可 IMAGE_PROVIDER）
  *                                                  #   qwen=通义千问 Qwen-Image，需 DASHSCOPE_API_KEY
  *     [--optional 白猫=on|off]                     # 强制开 / 关预设里的可选段（默认按预设写的概率抽签）
@@ -46,6 +46,7 @@ import { verifyTitle } from './lib/qa.mjs';
 import { renderWireframe } from './lib/wireframe.mjs';
 import { parseCharacterRules, guardCandidates } from './lib/character_guard.mjs';
 import { layoutErrors } from './lib/layout_check.mjs';
+import { noTitleRegister } from './lib/register.mjs';
 import { applyOptionalBlocks, parseOverrides } from './lib/optional_blocks.mjs';
 
 const ROOT = import.meta.dirname;
@@ -80,9 +81,9 @@ const modelOverride = typeof arg('model') === 'string' ? arg('model') : null;
 const effort = (typeof arg('effort') === 'string' ? arg('effort') : null) || 'high';
 // 多候选：--variants N，一次出 N 个不同钩子/构图的候选（默认 1）
 const variants = Math.max(1, parseInt(arg('variants', '1'), 10) || 1);
-// 中文标题 QA：默认开，糊字自动重出；--no-qa 关闭，--qa-retries N 调重试次数（默认 1）
+// 中文标题 QA：默认开，糊字自动重出；--no-qa 关闭，--qa-retries N 调重试次数（默认 2）
 const qaEnabled = !args.includes('--no-qa');
-const qaRetries = (() => { const v = parseInt(arg('qa-retries', '1'), 10); return Number.isNaN(v) ? 1 : Math.max(0, v); })();
+const qaRetries = (() => { const v = parseInt(arg('qa-retries', '2'), 10); return Number.isNaN(v) ? 2 : Math.max(0, v); })();
 // 出图后端：--provider openai|qwen（透传给 render.mjs；不传则 render 用默认/IMAGE_PROVIDER）
 const imageProvider = typeof arg('provider') === 'string' ? arg('provider') : null;
 // 多方案版式多样化：仅当 variants>1 时生效，让各候选尽量用不同 pattern（默认关 = 按内容自动选最优）
@@ -435,7 +436,7 @@ for (const [i, c] of candidates.entries()) {
   }
 
   // 情绪 / 感悟 语域的封面不渲染标题（纯氛围图），没有标题可校验 → 跳过 QA
-  const moodNoText = /情绪|情感|氛围|感悟|散文|随笔|mood|emotion|essay/i.test(c.register || '');
+  const moodNoText = noTitleRegister(c.register);
   // 中文标题 QA + 自动重出（默认开；--no-qa 关闭；情绪图无标题时跳过）
   if (qaEnabled && !moodNoText) {
     for (let attempt = 0; ; attempt++) {
